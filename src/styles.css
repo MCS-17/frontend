@@ -1,3 +1,9 @@
 /* You can add global styles to this file, and also import other style files */
 
 @import 'tailwindcss';
+
+:root {
+  /* From Figma hero rectangle: #014D7F */
+  --color-primary: #014d7f;
+  --color-primary-rgb: 1 77 127;
+}

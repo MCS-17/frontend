@@ -1,10 +1,10 @@
 import { NgOptimizedImage } from '@angular/common';
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { CodeSampleCard } from '../code-sample-card/code-sample-card.component';
+import { ChatDemo } from '../chat-demo/chat-demo.component';
 
 @Component({
   selector: 'app-feature-cards',
-  imports: [NgOptimizedImage, CodeSampleCard],
+  imports: [NgOptimizedImage, ChatDemo],
   templateUrl: './feature-cards.component.html',
   styleUrl: './feature-cards.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
