@@ -1,34 +1,54 @@
-<div class="w-full max-w-5xl rounded-xl border-2 border-neutral-500 overflow-hidden bg-white h-102">
-  <div class="h-14 bg-neutral-200 border-b-2 border-neutral-500 flex items-center px-6 gap-10">
-    <div class="text-sm sm:text-base font-medium">mpi.job</div>
-    <div class="text-sm sm:text-base font-medium">mpi.c</div>
-    <div class="ml-auto">
-      <img ngSrc="/assets/landing/copy.svg" width="24" height="24" alt="Copy" class="w-6 h-6" />
-    </div>
+<div class="w-full max-w-5xl rounded-xl border-2 border-neutral-500 overflow-hidden bg-white h-116">
+  <div class="h-14 bg-neutral-200 flex items-center px-4 gap-2">
+    <button
+      type="button"
+      class="relative px-4 py-2 rounded-md text-sm sm:text-base font-medium text-neutral-700"
+      [class.bg-white]="tab() === 'mpi.job'"
+      [class.text-black]="tab() === 'mpi.job'"
+      (click)="setTab('mpi.job')"
+    >
+      mpi.job
+      @if (tab() === 'mpi.job') {
+        <span class="absolute left-3 right-3 bottom-1 h-0.5 bg-black"></span>
+      }
+    </button>
+    <button
+      type="button"
+      class="relative px-4 py-2 rounded-md text-sm sm:text-base font-medium text-neutral-700"
+      [class.bg-white]="tab() === 'mpi.c'"
+      [class.text-black]="tab() === 'mpi.c'"
+      (click)="setTab('mpi.c')"
+    >
+      mpi.c
+      @if (tab() === 'mpi.c') {
+        <span class="absolute left-3 right-3 bottom-1 h-0.5 bg-black"></span>
+      }
+    </button>
+    <button
+      type="button"
+      class="ml-auto p-2 rounded-md hover:bg-black/5 active:bg-black/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30"
+      (click)="copyToClipboard()"
+      aria-label="Copy current file contents"
+    >
+      <img ngSrc="/assets/landing/copy.svg" width="24" height="24" alt="" class="w-6 h-6" />
+    </button>
   </div>
 
   <div class="flex gap-4 px-5 pt-4 pb-5 font-mono text-xs sm:text-sm leading-relaxed">
     <div class="w-10 shrink-0 text-right pr-2 opacity-80">
-      @for (n of lines; track n) {
+      @for (n of lineNumbers(); track n) {
         <div>{{ n }}</div>
       }
     </div>
 
     <div class="flex-1 whitespace-pre-wrap">
-      <div class="text-neutral-500">#!/bin/bash</div>
-      <div class="text-neutral-500">#SBATCH --job-name=mpi</div>
-      <div class="text-neutral-500">#SBATCH --nodes=2</div>
-      <div class="text-neutral-500">#SBATCH --ntasks=4</div>
-      <div class="text-neutral-500">#SBATCH --cpus-per-task=1</div>
-      <div class="text-neutral-500">#SBATCH --ntasks-per-node=2</div>
-      <div class="text-neutral-500">#SBATCH --partition=defq</div>
-      <div>&nbsp;</div>
-      <div><span class="text-red-600">module load</span> openmpi/4.1.5</div>
-      <div>&nbsp;</div>
-      <div>mpicc mpi.c -o mpi</div>
-      <div>&nbsp;</div>
-      <div><span class="text-green-600">srun</span> mpi</div>
-      <div>exit</div>
+      @for (line of codeLines(); track $index) {
+        @if (line === '') {
+          <div>&nbsp;</div>
+        } @else {
+          <div>{{ line }}</div>
+        }
+      }
     </div>
   </div>
 </div>
