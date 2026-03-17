@@ -9,9 +9,7 @@ type CodeTab = 'mpi.job' | 'mpi.c';
   templateUrl: './code-sample-card.component.html',
   styleUrl: './code-sample-card.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: {
-    class: 'block w-full'
-  }
+
 })
 export class CodeSampleCard {
   protected readonly tab = signal<CodeTab>('mpi.job');

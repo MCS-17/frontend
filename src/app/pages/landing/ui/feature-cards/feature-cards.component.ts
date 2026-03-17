@@ -8,9 +8,7 @@ import { AppDemo } from '../app-demo/app-demo.component';
   templateUrl: './feature-cards.component.html',
   styleUrl: './feature-cards.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: {
-    class: 'block w-full'
-  }
+
 })
 export class FeatureCards {}
 

@@ -1,7 +1,3 @@
-:host {
-  display: block;
-}
-
 .mode-switch {
   background-color: rgb(var(--color-primary-rgb) / 0.15);
 }

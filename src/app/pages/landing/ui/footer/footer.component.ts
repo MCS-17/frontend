@@ -7,9 +7,7 @@ import { RouterLink } from '@angular/router';
   templateUrl: './footer.component.html',
   styleUrl: './footer.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: {
-    class: 'block w-full'
-  }
+
 })
 export class Footer {}
 

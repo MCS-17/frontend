@@ -10,9 +10,7 @@ type DemoMode = 'manual' | 'vibes';
   templateUrl: './app-demo.component.html',
   styleUrl: './app-demo.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: {
-    class: 'block w-full'
-  }
+
 })
 export class AppDemo {
   protected readonly mode = signal<DemoMode>('manual');

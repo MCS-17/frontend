@@ -7,9 +7,6 @@ type TrustedItem = { code: string; label: string };
   templateUrl: './trusted-by-row.component.html',
   styleUrl: './trusted-by-row.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: {
-    class: 'block w-full'
-  }
 })
 export class TrustedByRow {
   protected readonly items: TrustedItem[] = [

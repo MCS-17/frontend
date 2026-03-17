@@ -1,33 +1,30 @@
-<div class="w-full">
-  <div class="mb-6 w-full max-w-5xl mx-auto">
-    <div class="mode-switch flex w-full rounded-lg p-1">
-      <button
-        type="button"
-        class="flex-1 px-4 py-2 rounded-md text-sm font-semibold"
-        [class.bg-white]="mode() === 'manual'"
-        [class.shadow]="mode() === 'manual'"
-        (click)="setMode('manual')"
-      >
-        Manual
-      </button>
-      <button
-        type="button"
-        class="flex-1 px-4 py-2 rounded-md text-sm font-semibold"
-        [class.bg-white]="mode() === 'vibes'"
-        [class.shadow]="mode() === 'vibes'"
-        (click)="setMode('vibes')"
-      >
-        Just vibes
-      </button>
-    </div>
-  </div>
-
-  <div class="mt-6 w-full max-w-5xl mx-auto flex items-start justify-center">
-    @if (mode() === 'manual') {
-      <app-code-sample-card />
-    } @else {
-      <app-chatbot-card />
-    }
+<div class="mb-6">
+  <div class="mode-switch flex w-full rounded-lg p-1">
+    <button
+      type="button"
+      class="flex-1 px-4 py-2 rounded-md text-sm font-semibold"
+      [class.bg-white]="mode() === 'manual'"
+      [class.shadow]="mode() === 'manual'"
+      (click)="setMode('manual')"
+    >
+      Manual
+    </button>
+    <button
+      type="button"
+      class="flex-1 px-4 py-2 rounded-md text-sm font-semibold"
+      [class.bg-white]="mode() === 'vibes'"
+      [class.shadow]="mode() === 'vibes'"
+      (click)="setMode('vibes')"
+    >
+      Just vibes
+    </button>
   </div>
 </div>
 
+<div class="mt-6">
+  @if (mode() === 'manual') {
+    <app-code-sample-card />
+  } @else {
+    <app-chatbot-card />
+  }
+</div>
