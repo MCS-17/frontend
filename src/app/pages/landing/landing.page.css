@@ -24,7 +24,7 @@
 
 .hero-byfor {
   /* Use actual line-height to avoid 1px bleed from sub-pixel rounding. */
-  height: 1em;
+  height: 1lh;
   position: relative;
   /* Flip so an upward translate reads as downward motion. */
   transform: rotate(180deg);
