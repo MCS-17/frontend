@@ -1,0 +1,80 @@
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10 w-full">
+  <!-- Card: High Performance Hardware -->
+  <div class="bg-white border-2 border-neutral-300 rounded-xl min-h-72">
+    <div class="pt-8 pl-8 pr-6">
+      <div class="text-xl sm:text-2xl font-semibold leading-tight max-w-sm">
+        High Performance<br />
+        Hardware
+      </div>
+      <div class="mt-5 text-base sm:text-lg leading-relaxed max-w-sm">
+        <div>4x Intel Xeon Processors</div>
+        <div>4x Nvidia RTX Quadro P5000</div>
+        <div>256GB RAM</div>
+        <div>10TB+ Parallel Storage</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Card: Support for various Workloads -->
+  <div class="bg-white border-2 border-neutral-300 rounded-xl min-h-72 relative overflow-hidden">
+    <div class="pt-8 pl-8 pr-6">
+      <div class="text-xl sm:text-2xl font-semibold leading-tight max-w-sm">
+        Support for various<br />
+        Workloads
+      </div>
+    </div>
+
+    <div class="mt-8 px-8 pb-8 flex flex-wrap items-center gap-6 sm:gap-8">
+      <img
+        ngSrc="/assets/landing/openmpi.png"
+        width="123"
+        height="86"
+        alt="OpenMPI"
+        class="h-20 w-auto object-contain"
+      />
+      <img
+        ngSrc="/assets/landing/cuda.png"
+        width="180"
+        height="86"
+        alt="NVIDIA CUDA"
+        class="h-20 w-auto object-contain"
+      />
+      <img
+        ngSrc="/assets/landing/pytorch.png"
+        width="170"
+        height="36"
+        alt="PyTorch"
+        class="h-9 w-auto object-contain"
+      />
+      <img
+        ngSrc="/assets/landing/spark.png"
+        width="150"
+        height="72"
+        alt="Apache Spark"
+        class="h-16 w-auto object-contain"
+      />
+    </div>
+  </div>
+</div>
+
+<!-- Lower section -->
+<div
+  class="mt-8 bg-white border-2 border-neutral-300 rounded-xl w-full lg:flex"
+>
+  <div class="pt-8 px-8 pb-6 w-full lg:w-2/5">
+    <div class="text-xl sm:text-2xl font-semibold leading-tight max-w-sm">
+      Full Control, or just Vibes
+    </div>
+    <div class="mt-6 text-base sm:text-lg leading-relaxed max-w-lg">
+      Support for configuring workloads manually via SLURM <span class="italic">.job</span> files, or tell the agent to
+      do it for you.
+    </div>
+  </div>
+
+  <div class="hidden lg:block w-px bg-neutral-300"></div>
+
+  <div class="flex-1 flex items-start justify-center p-6 lg:p-8">
+    <app-code-sample-card />
+  </div>
+</div>
+
