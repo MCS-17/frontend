@@ -1,0 +1,40 @@
+<div class="rounded-xl overflow-hidden" style="background:#fff;border:1px solid #DDE3EC;box-shadow:0 1px 3px rgba(0,59,113,0.06)">
+  <div class="px-5 py-3 border-b flex items-center justify-between" style="border-color:#EEF2F8">
+    <div class="flex items-center gap-2">
+      <span class="material-icons" style="color:#006DAE">monetization_on</span>
+      <h2 style="font-family:'Instrument Sans',sans-serif;font-size:15px;font-weight:700;color:#0D1B2A">Credits</h2>
+    </div>
+    <button class="flex items-center gap-1 text-xs font-medium hover:underline" style="font-family:'Instrument Sans',sans-serif;color:#006DAE;background:none;border:none;cursor:pointer">
+      Submit job <span class="material-icons" style="font-size:16px">arrow_forward</span>
+    </button>
+  </div>
+  <div class="p-5">
+    <div class="rounded-xl p-4 mb-4 text-center" style="background:#F0FDF4;border:1px solid #BBF7D0">
+      <div style="font-family:'Instrument Sans',sans-serif;font-size:11px;font-weight:600;color:#64748B;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Available Balance</div>
+      <div style="font-family:'Instrument Sans',sans-serif;font-size:32px;font-weight:700;color:#22C55E;letter-spacing:-1px;line-height:1">{{ balance | number:'1.0-1' }}</div>
+      <div style="font-family:'Instrument Sans',sans-serif;font-size:12px;color:#22C55E;opacity:0.75;margin-top:2px">credits</div>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div class="rounded-lg px-3 py-2.5" style="background:#F8FAFC;border:1px solid #DDE3EC">
+        <div style="font-family:'Instrument Sans',sans-serif;font-size:10px;color:#94A3B8;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:2px">Total Used</div>
+        <div style="font-family:'Instrument Sans',sans-serif;font-size:15px;font-weight:700;color:#0D1B2A">{{ totalSpent | number:'1.0-1' }}</div>
+      </div>
+      <div class="rounded-lg px-3 py-2.5" style="background:#F8FAFC;border:1px solid #DDE3EC">
+        <div style="font-family:'Instrument Sans',sans-serif;font-size:10px;color:#94A3B8;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:2px">Transactions</div>
+        <div style="font-family:'Instrument Sans',sans-serif;font-size:15px;font-weight:700;color:#0D1B2A">{{ transactions.length }}</div>
+      </div>
+    </div>
+    <div *ngIf="transactions.length > 0" class="mt-4">
+      <div style="font-family:'Instrument Sans',sans-serif;font-size:11px;font-weight:600;color:#94A3B8;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px">Recent</div>
+      <div class="space-y-1.5">
+        <div *ngFor="let tx of transactions.slice(0,3)" class="flex items-center justify-between">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="material-icons" style="color:#EF4444;font-size:14px">trending_down</span>
+            <span style="font-family:'Instrument Sans',sans-serif;font-size:11px;color:#475569;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ tx.jobName }}</span>
+          </div>
+          <span style="font-family:'Instrument Sans',sans-serif;font-size:11px;font-weight:600;color:#EF4444;flex-shrink:0;margin-left:8px">-{{ tx.amount | number:'1.0-1' }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
