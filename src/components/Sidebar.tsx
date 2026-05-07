@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "motion/react"
 import {
   MessageSquareMore,
-  Database,
+  Folder,
   LayoutGrid,
   ChevronLeft,
   ChevronRight,
@@ -15,7 +15,7 @@ import { Link, useLocation } from "@tanstack/react-router"
 const TABS = [
   { name: "Chat", icon: MessageSquareMore, to: "/chat" },
   { name: "Dashboard", icon: LayoutGrid, to: "/" },
-  { name: "Storage", icon: Database, to: "/storage" },
+  { name: "Storage", icon: Folder, to: "/storage" },
 ]
 
 export function Sidebar() {

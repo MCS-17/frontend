@@ -1,6 +1,8 @@
-import { HeadContent, Outlet, Scripts, createRootRoute } from '@tanstack/react-router'
+import { useState, useEffect } from 'react'
+import { HeadContent, Outlet, Scripts, createRootRoute, useLocation, useNavigate } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
+import { AnimatePresence, motion } from 'motion/react'
 import { Sidebar } from '../components/Sidebar'
 import appCss from '../styles.css?url'
 
@@ -38,6 +40,27 @@ export const Route = createRootRoute({
 })
 
 function RootLayout() {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false
+    return localStorage.getItem("isAuthenticated") === "true"
+  })
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    const auth = localStorage.getItem("isAuthenticated") === "true"
+    if (auth !== isAuthenticated) {
+      setIsAuthenticated(auth)
+    }
+
+    // Global Auth Guard: Redirect to login if not authenticated and not already on login page
+    if (!auth && location.pathname !== '/login') {
+      navigate({ to: '/login', replace: true })
+    }
+  }, [location.pathname, navigate, isAuthenticated])
+
+  const isLoginRoute = location.pathname === '/login'
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-white relative">
       {/* Ambient Glassmorphism Blobs */}
@@ -50,7 +73,21 @@ function RootLayout() {
         <div className="absolute inset-0 opacity-[0.03] mix-blend-overlay pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
       </div>
 
-      <Sidebar />
+      <AnimatePresence mode="wait">
+        {isAuthenticated && !isLoginRoute && (
+          <motion.div
+            key="sidebar-container"
+            initial={{ x: -240, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: -240, opacity: 0 }}
+            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            className="z-50"
+          >
+            <Sidebar />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <main className="flex-1 h-full overflow-y-auto relative z-10">
         <Outlet />
       </main>
