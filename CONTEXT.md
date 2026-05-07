@@ -59,6 +59,15 @@ The ability to drag and drop or select an entire folder for upload, preserving i
 ### Context-Aware Menu
 A custom right-click menu that displays relevant actions based on the specific element (file, folder, or empty space) being interacted with in the Storage page.
 
+### Professional Glassmorphism
+A design approach that combines frosted-glass effects (blur/transparency) with professional structural rules, such as precise edge-anchored indicators, standardized spacing, and muted typography, to avoid a playful or "toy-like" appearance while maintaining a high-end visual style.
+
+### Visual Semantic Grouping
+The use of muted, uppercase labels and consistent vertical spacing to categorize sidebar navigation items into logical sections (e.g., 'Navigation', 'Data') without the use of heavy dividers.
+
+### Edge-Anchored Indicators
+Active state markers that are positioned perfectly flush against the sidebar's edge, creating a clear vertical alignment and structural distinction for the currently selected route.
+
 ## Constraints & Rules
 
 - **Max Files:** 10 files per message.

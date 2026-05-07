@@ -17,7 +17,9 @@
         "motion": "^12.38.0",
         "react": "^19.2.0",
         "react-dom": "^19.2.0",
+        "skill": "^1.0.2",
         "tailwindcss": "^4.1.18",
+        "agent-skills": "vercel-labs/agent-skills",
       },
       "devDependencies": {
         "@biomejs/biome": "2.4.5",
@@ -351,6 +353,8 @@
 
     "agent-base": ["agent-base@7.1.4", "", {}, "sha512-MnA+YT8fwfJPgBx3m60MNqakm30XOkyIoH1y6huTQvC0PwZG7ki8NacLBcrPbNoo8vEZy7Jpuk7+jMO+CUovTQ=="],
 
+    "agent-skills": ["agent-skills@github:vercel-labs/agent-skills#b9c8ee0", {}, "vercel-labs-agent-skills-b9c8ee0", "sha512-v+yd5aI0D55UdRPjkdLRNpT85oiYmlKtXZ+CWlcz/ApzIdR3ygxdWXFImx834PZCTdVaGRoazaqViq96dr3rRA=="],
+
     "ansi-regex": ["ansi-regex@5.0.1", "", {}, "sha512-quJQXlTSUGL2LH9SUXo8VwsY4soanhgo6LNSm84E1LBcE8s3O0wpdiRzyR9z/ZZJMlMWv37qOOb9pdJlMUEKFQ=="],
 
     "ansi-styles": ["ansi-styles@5.2.0", "", {}, "sha512-Cxwpt2SfTzTtXcfOlzGEee8O+c+MmUgGrNiBcXnuWxuFJHe6a5Hz7qwhwe5OgaSYI0IJvkLqWX1ASG+cJOkEiA=="],
@@ -612,6 +616,8 @@
     "shell-quote": ["shell-quote@1.8.3", "", {}, "sha512-ObmnIF4hXNg1BqhnHmgbDETF8dLPCggZWBjkQfhZpbszZnYur5DUljTcCHii5LC3J5E0yeO/1LIMyH+UvHQgyw=="],
 
     "siginfo": ["siginfo@2.0.0", "", {}, "sha512-ybx0WO1/8bSBLEWXZvEd7gMW3Sn3JFlW3TvX1nREbDLRNQNaeNN8WK0meBwPdAaOI7TtRRRJn/Es1zhrrCHu7g=="],
+
+    "skill": ["skill@1.0.2", "", { "bin": { "skill": "bin/cli.mjs" } }, "sha512-isI+JV7601JybEJyAZwKr7/54tJypiqHtxsF5kvJbJEYmwa3JzGGQJxT3JvUDcVwTfUTzycs7RYZh9UQQYMfsA=="],
 
     "solid-js": ["solid-js@1.9.12", "", { "dependencies": { "csstype": "^3.1.0", "seroval": "~1.5.0", "seroval-plugins": "~1.5.0" } }, "sha512-QzKaSJq2/iDrWR1As6MHZQ8fQkdOBf8GReYb7L5iKwMGceg7HxDcaOHk0at66tNgn9U2U7dXo8ZZpLIAmGMzgw=="],
 

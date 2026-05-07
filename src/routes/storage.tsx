@@ -1,46 +1,42 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { motion, AnimatePresence } from "motion/react"
 import { 
   Folder, 
-  FileImage, 
+  File, 
+  FileText, 
   FileCode, 
-  FileJson, 
-  FileArchive, 
-  File,
-  Home,
+  FileImage, 
+  Download, 
+  Trash2, 
+  Eye, 
   ChevronRight,
-  Download,
-  Trash2,
-  Eye,
-  Plus,
-  Upload,
-  Check,
-  X,
+  Home,
   RefreshCw,
-  Edit2,
-  FolderPlus
+  FolderPlus,
+  Upload,
+  X,
+  Edit2
 } from "lucide-react"
 import { useState, useEffect } from "react"
+import { motion, AnimatePresence } from "motion/react"
 
 export const Route = createFileRoute('/storage')({
   component: StoragePage,
 })
 
-// Mock Data for the filesystem
 const MOCK_FILES = [
-  { id: '1', name: 'projects', type: 'folder', size: '-', modified: '2024-05-01 14:30' },
-  { id: '2', name: 'dataset_v1.zip', type: 'archive', size: '2.4 GB', modified: '2024-04-28 09:15' },
-  { id: '3', name: 'analysis.py', type: 'code', size: '12 KB', modified: '2024-05-02 11:20' },
-  { id: '4', name: 'results.json', type: 'json', size: '450 KB', modified: '2024-05-03 16:45' },
-  { id: '5', name: 'model_weights.pt', type: 'file', size: '850 MB', modified: '2024-05-01 10:00' },
+  { id: '1', name: 'research_data_v2.csv', type: 'text', size: '2.4 GB', modified: '2 hours ago' },
+  { id: '2', name: 'simulation_results', type: 'folder', size: '--', modified: 'Yesterday' },
+  { id: '3', name: 'model_weights_epoch_50.pt', type: 'code', size: '840 MB', modified: '3 days ago' },
+  { id: '4', name: 'training_viz.png', type: 'image', size: '4.2 MB', modified: '5 days ago' },
+  { id: '5', name: 'user_logs', type: 'folder', size: '--', modified: '1 week ago' },
+  { id: '6', name: 'setup_script.sh', type: 'code', size: '12 KB', modified: '2 weeks ago' },
 ]
 
 const getFileIcon = (type: string) => {
   switch (type) {
-    case 'folder': return <Folder className="size-5 text-amber-500 fill-amber-500/20" />
-    case 'archive': return <FileArchive className="size-5 text-blue-500" />
+    case 'folder': return <Folder className="size-5 text-amber-400 fill-amber-400/20" />
+    case 'text': return <FileText className="size-5 text-blue-500" />
     case 'code': return <FileCode className="size-5 text-purple-500" />
-    case 'json': return <FileJson className="size-5 text-orange-500" />
     case 'image': return <FileImage className="size-5 text-green-500" />
     default: return <File className="size-5 text-gray-400" />
   }
@@ -48,18 +44,40 @@ const getFileIcon = (type: string) => {
 
 function StoragePage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [lastSelectedId, setLastSelectedId] = useState<string | null>(null)
   const [currentPath, setCurrentPath] = useState<string[]>([]) // Alias for /mnt/beegfs/user/<user_id>
   
-  const toggleSelect = (id: string) => {
-    const next = new Set(selectedIds)
-    if (next.has(id)) next.delete(id)
-    else next.add(id)
-    setSelectedIds(next)
-  }
+  const handleSelect = (e: React.MouseEvent, id: string) => {
+    const isShift = e.shiftKey
+    const isCtrl = e.ctrlKey || e.metaKey
+    
+    setSelectedIds(prev => {
+      const next = new Set(prev)
 
-  const toggleSelectAll = () => {
-    if (selectedIds.size === MOCK_FILES.length) setSelectedIds(new Set())
-    else setSelectedIds(new Set(MOCK_FILES.map(f => f.id)))
+      if (isShift && lastSelectedId) {
+        const currentIndex = MOCK_FILES.findIndex(f => f.id === id)
+        const lastIndex = MOCK_FILES.findIndex(f => f.id === lastSelectedId)
+        
+        if (currentIndex === -1 || lastIndex === -1) return prev
+
+        const [start, end] = [Math.min(currentIndex, lastIndex), Math.max(currentIndex, lastIndex)]
+        const rangeIds = MOCK_FILES.slice(start, end + 1).map(f => f.id)
+        rangeIds.forEach(rid => next.add(rid))
+      } else if (isCtrl) {
+        if (next.has(id)) {
+          next.delete(id)
+        } else {
+          next.add(id)
+        }
+      } else {
+        next.clear()
+        next.add(id)
+      }
+      
+      return next
+    })
+    
+    setLastSelectedId(id)
   }
 
   const [previewFile, setPreviewFile] = useState<typeof MOCK_FILES[0] | null>(null)
@@ -127,23 +145,11 @@ function StoragePage() {
       {/* File List Table */}
       <div 
         onContextMenu={(e) => handleContextMenu(e, 'background')}
-        className="flex-1 min-h-0 bg-white/60 backdrop-blur-3xl border border-zinc-200/50 rounded-[2rem] shadow-xl shadow-zinc-200/50 overflow-hidden flex flex-col relative"
+        className="flex-1 min-h-0 bg-white/50 backdrop-blur-2xl border border-white/20 rounded-xl shadow-xl shadow-slate-200/50 overflow-hidden flex flex-col relative"
       >
         {/* Table Header */}
-        <div className="grid grid-cols-[48px_1fr_100px_180px_120px] gap-2 px-6 py-3 border-b border-zinc-100 bg-white/40 text-[10px] font-bold uppercase tracking-widest text-zinc-400 items-center">
-          <div className="flex items-center justify-center">
-            <button 
-              onClick={toggleSelectAll}
-              className={`size-4 rounded-md border-2 transition-all flex items-center justify-center ${
-                selectedIds.size === MOCK_FILES.length 
-                ? "bg-amber-400 border-amber-400" 
-                : "border-zinc-200 hover:border-zinc-300 bg-white"
-              }`}
-            >
-              {selectedIds.size === MOCK_FILES.length && <Check className="size-2.5 text-black stroke-[3px]" />}
-            </button>
-          </div>
-          <div>Name</div>
+        <div className="grid grid-cols-[1fr_100px_180px_120px] gap-2 px-6 py-3 border-b border-white/20 bg-white/40 text-[10px] font-bold uppercase tracking-widest text-slate-400 items-center">
+          <div className="pl-2">Name</div>
           <div className="text-right pr-4">Size</div>
           <div>Last Modified</div>
           <div className="text-right pr-2">Actions</div>
@@ -158,49 +164,36 @@ function StoragePage() {
               <motion.div 
                 key={file.id}
                 onContextMenu={(e) => handleContextMenu(e, 'file', file.id)}
-                className={`grid grid-cols-[48px_1fr_100px_180px_120px] gap-2 px-6 py-2.5 items-center border-b border-zinc-50 hover:bg-amber-50/30 transition-colors group ${isSelected ? "bg-amber-50/50" : ""}`}
+                onClick={(e) => handleSelect(e, file.id)}
+                onDoubleClick={() => isFolder ? handleFolderClick(file.name) : setPreviewFile(file)}
+                className={`grid grid-cols-[1fr_100px_180px_120px] gap-2 px-6 py-2.5 items-center border-b border-slate-50 hover:bg-slate-100/50 transition-colors group cursor-pointer select-none ${isSelected ? "bg-amber-400/10 border-l-4 border-l-amber-400 pl-[21px]" : "pl-6"}`}
               >
-                <div className="flex items-center justify-center">
-                  <button 
-                    onClick={() => toggleSelect(file.id)}
-                    className={`size-4 rounded-md border-2 transition-all flex items-center justify-center ${
-                      isSelected 
-                      ? "bg-amber-400 border-amber-400" 
-                      : "border-zinc-200 group-hover:border-zinc-300 bg-white"
-                    }`}
-                  >
-                    {isSelected && <Check className="size-2.5 text-black stroke-[3px]" />}
-                  </button>
-                </div>
                 <div className="flex items-center gap-2.5 overflow-hidden">
                   <div className="shrink-0">{getFileIcon(file.type)}</div>
-                  <span 
-                    onClick={() => isFolder ? handleFolderClick(file.name) : setPreviewFile(file)}
-                    className="text-sm font-semibold text-zinc-700 truncate group-hover:text-black transition-colors cursor-pointer"
-                  >
+                  <span className="text-sm font-semibold text-slate-700 truncate group-hover:text-slate-900 transition-colors">
                     {file.name}
                   </span>
                 </div>
-                <div className="text-[13px] text-zinc-500 font-medium text-right pr-4">{file.size}</div>
-                <div className="text-[13px] text-zinc-500 font-medium">{file.modified}</div>
+                <div className="text-[13px] text-slate-500 font-medium text-right pr-4">{file.size}</div>
+                <div className="text-[13px] text-slate-500 font-medium">{file.modified}</div>
                 <div className="flex items-center justify-end pr-2">
                   <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {!isFolder && (
+                    {!isFolder ? (
                       <button 
-                        onClick={() => setPreviewFile(file)}
+                        onClick={(e) => { e.stopPropagation(); setPreviewFile(file); }}
                         title="Quick Look" 
-                        className="p-1.5 text-zinc-400 hover:text-zinc-900 hover:bg-black/5 rounded-lg transition-all"
+                        className="p-1.5 text-slate-400 hover:text-slate-900 hover:bg-slate-200/50 rounded-lg transition-all"
                       >
                         <Eye className="size-4" />
                       </button>
-                    )}
-                    <button title="Download" className="p-1.5 text-zinc-400 hover:text-zinc-900 hover:bg-black/5 rounded-lg transition-all">
+                    ) : null}
+                    <button title="Download" className="p-1.5 text-slate-400 hover:text-slate-900 hover:bg-slate-200/50 rounded-lg transition-all">
                       <Download className="size-4" />
                     </button>
                     <button 
-                      onClick={() => setDeleteFiles([file.id])}
+                      onClick={(e) => { e.stopPropagation(); setDeleteFiles([file.id]); }}
                       title="Delete" 
-                      className="p-1.5 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                      className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
                     >
                       <Trash2 className="size-4" />
                     </button>
@@ -211,11 +204,8 @@ function StoragePage() {
           })}
 
           {/* Inline Action Row */}
-          <div className="grid grid-cols-[48px_1fr_100px_180px_120px] gap-2 px-6 py-4 items-center bg-zinc-50/30 border-t border-zinc-100/50 group">
-            <div className="flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-              <Plus className="size-4 text-zinc-300" />
-            </div>
-            <div className="flex items-center gap-4 overflow-hidden">
+          <div className="grid grid-cols-[1fr_100px_180px_120px] gap-2 px-6 py-4 items-center bg-slate-50/50 border-t border-slate-100/50 group">
+            <div className="flex items-center gap-4 overflow-hidden pl-2">
               <button className="flex items-center gap-2 px-3 py-1.5 text-sm font-bold text-zinc-400 hover:text-zinc-900 hover:bg-black/5 rounded-xl transition-all border border-transparent hover:border-zinc-200">
                 <FolderPlus className="size-4" />
                 New Folder
@@ -225,75 +215,74 @@ function StoragePage() {
                 Upload Files
               </button>
             </div>
-            <div className="col-span-3" />
           </div>
         </div>
 
         {/* Selection Toolbar (Floating) */}
         <AnimatePresence>
-          {selectedIds.size > 0 && (
+          {selectedIds.size > 0 ? (
             <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20">
               <motion.div 
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 exit={{ y: 20, opacity: 0 }}
-                className="flex items-center gap-4 px-6 py-3 bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl shadow-black/40 text-white"
+                className="flex items-center gap-4 px-6 py-3 bg-white/80 backdrop-blur-2xl border border-slate-200 shadow-2xl shadow-slate-200/60 rounded-xl text-slate-900"
               >
-                <span className="text-sm font-bold bg-white/10 px-2 py-0.5 rounded-lg">
+                <span className="text-sm font-bold bg-slate-100 px-2 py-0.5 rounded-lg text-slate-600">
                   {selectedIds.size} Selected
                 </span>
-                <div className="h-4 w-px bg-white/10" />
+                <div className="h-4 w-px bg-slate-200" />
                 <div className="flex items-center gap-2">
-                  <button className="flex items-center gap-2 px-3 py-1.5 hover:bg-white/10 rounded-xl transition-colors text-sm font-semibold">
+                  <button className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-100 rounded-lg transition-colors text-sm font-semibold">
                     <Download className="size-4" />
                     Download
                   </button>
                   <button 
                     onClick={() => setDeleteFiles(Array.from(selectedIds))}
-                    className="flex items-center gap-2 px-3 py-1.5 hover:bg-red-500/20 text-red-400 rounded-xl transition-colors text-sm font-semibold"
+                    className="flex items-center gap-2 px-3 py-1.5 hover:bg-red-50 text-red-600 rounded-lg transition-colors text-sm font-semibold"
                   >
                     <Trash2 className="size-4" />
                     Delete
                   </button>
                 </div>
-                <div className="h-4 w-px bg-white/10" />
+                <div className="h-4 w-px bg-slate-200" />
                 <button 
-                  onClick={() => setSelectedIds(new Set())}
-                  className="p-1 hover:bg-white/10 rounded-lg transition-colors"
+                  onClick={() => { setSelectedIds(new Set()); setLastSelectedId(null); }}
+                  className="p-1 hover:bg-slate-100 rounded-md transition-colors"
                 >
-                  <X className="size-4" />
+                  <X className="size-4 text-slate-400 hover:text-slate-900" />
                 </button>
               </motion.div>
             </div>
-          )}
+          ) : null}
         </AnimatePresence>
       </div>
 
       {/* Context Menu Layer */}
       <AnimatePresence>
-        {contextMenu && (
+        {contextMenu ? (
           <motion.div 
             initial={{ opacity: 0, scale: 0.95, y: -5 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -5 }}
             transition={{ duration: 0.1, ease: "circOut" }}
             style={{ left: contextMenu.x, top: contextMenu.y }}
-            className="fixed z-[200] min-w-[180px] bg-white/80 backdrop-blur-2xl border border-zinc-200/50 rounded-2xl shadow-2xl p-1.5 flex flex-col gap-0.5"
+            className="fixed z-[200] min-w-[180px] bg-white/90 backdrop-blur-2xl border border-slate-200/50 rounded-xl shadow-2xl p-1.5 flex flex-col gap-0.5"
           >
             {contextMenu.type === 'file' ? (
               <>
-                <button className="flex items-center gap-2.5 px-3 py-2 text-sm font-semibold text-zinc-700 hover:bg-black/5 rounded-xl transition-colors text-left">
+                <button className="flex items-center gap-2.5 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 rounded-lg transition-colors text-left">
                   <Download className="size-4" />
                   Download
                 </button>
-                <button className="flex items-center gap-2.5 px-3 py-2 text-sm font-semibold text-zinc-700 hover:bg-black/5 rounded-xl transition-colors text-left">
+                <button className="flex items-center gap-2.5 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 rounded-lg transition-colors text-left">
                   <Edit2 className="size-4" />
                   Rename
                 </button>
-                <div className="h-px bg-zinc-100 my-1 mx-2" />
+                <div className="h-px bg-slate-100 my-1 mx-2" />
                 <button 
                   onClick={() => setDeleteFiles([contextMenu.targetId!])}
-                  className="flex items-center gap-2.5 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 rounded-xl transition-colors text-left"
+                  className="flex items-center gap-2.5 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 rounded-lg transition-colors text-left"
                 >
                   <Trash2 className="size-4" />
                   Delete
@@ -301,35 +290,35 @@ function StoragePage() {
               </>
             ) : (
               <>
-                <button className="flex items-center gap-2.5 px-3 py-2 text-sm font-semibold text-zinc-700 hover:bg-black/5 rounded-xl transition-colors text-left">
+                <button className="flex items-center gap-2.5 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 rounded-lg transition-colors text-left">
                   <FolderPlus className="size-4" />
                   New Folder
                 </button>
-                <button className="flex items-center gap-2.5 px-3 py-2 text-sm font-semibold text-zinc-700 hover:bg-black/5 rounded-xl transition-colors text-left">
+                <button className="flex items-center gap-2.5 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 rounded-lg transition-colors text-left">
                   <Upload className="size-4" />
                   Upload Files
                 </button>
-                <div className="h-px bg-zinc-100 my-1 mx-2" />
-                <button className="flex items-center gap-2.5 px-3 py-2 text-sm font-semibold text-zinc-700 hover:bg-black/5 rounded-xl transition-colors text-left">
+                <div className="h-px bg-slate-100 my-1 mx-2" />
+                <button className="flex items-center gap-2.5 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 rounded-lg transition-colors text-left">
                   <RefreshCw className="size-4" />
                   Refresh
                 </button>
               </>
             )}
           </motion.div>
-        )}
+        ) : null}
       </AnimatePresence>
 
       {/* Modals Layer */}
       <AnimatePresence>
         {/* Quick Look Preview Modal */}
-        {previewFile && (
+        {previewFile ? (
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setPreviewFile(null)}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm"
+            className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm"
           >
             <motion.div 
               onClick={(e) => e.stopPropagation()}
@@ -337,66 +326,66 @@ function StoragePage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="w-full max-w-4xl max-h-[80vh] bg-white rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col"
+              className="w-full max-w-4xl max-h-[80vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
             >
-              <div className="px-8 py-6 border-b border-zinc-100 flex items-center justify-between bg-zinc-50/50">
+              <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                 <div className="flex items-center gap-4">
                   {getFileIcon(previewFile.type)}
                   <div>
-                    <h3 className="font-bold text-zinc-900 leading-none">{previewFile.name}</h3>
-                    <p className="text-xs text-zinc-500 mt-1">{previewFile.size} • Modified {previewFile.modified}</p>
+                    <h3 className="font-bold text-slate-900 leading-none">{previewFile.name}</h3>
+                    <p className="text-xs text-slate-500 mt-1">{previewFile.size} • Modified {previewFile.modified}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <button 
                     title="Download File"
-                    className="p-2 hover:bg-black/5 rounded-xl transition-colors text-zinc-500 hover:text-zinc-900"
+                    className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-500 hover:text-slate-900"
                   >
                     <Download className="size-5" />
                   </button>
                   <button 
                     onClick={() => setPreviewFile(null)}
-                    className="p-2 hover:bg-black/5 rounded-xl transition-colors"
+                    className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
                   >
-                    <X className="size-5 text-zinc-500" />
+                    <X className="size-5 text-slate-500" />
                   </button>
                 </div>
               </div>
-              <div className="flex-1 overflow-auto p-10 bg-zinc-50/30">
-                <div className="w-full h-64 rounded-2xl border-2 border-dashed border-zinc-200 flex flex-col items-center justify-center text-zinc-400">
+              <div className="flex-1 overflow-auto p-10 bg-slate-50/30">
+                <div className="w-full h-64 rounded-xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400">
                   <FileCode className="size-12 mb-4 opacity-20" />
-                  <p className="font-medium italic">Preview content for {previewFile.name} would be loaded here...</p>
+                  <p className="font-medium italic text-sm">Preview content for {previewFile.name} would be loaded here...</p>
                 </div>
               </div>
             </motion.div>
           </motion.div>
-        )}
+        ) : null}
 
         {/* Delete Confirmation Modal */}
-        {deleteFiles.length > 0 && (
+        {deleteFiles.length > 0 ? (
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[110] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md"
+            className="fixed inset-0 z-[110] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-md"
           >
             <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="w-full max-w-md bg-white rounded-[2rem] shadow-2xl p-8"
+              className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8"
             >
-              <div className="size-14 rounded-2xl bg-red-50 flex items-center justify-center text-red-600 mb-6">
+              <div className="size-14 rounded-xl bg-red-50 flex items-center justify-center text-red-600 mb-6">
                 <Trash2 className="size-7" />
               </div>
-              <h3 className="text-2xl font-bold text-zinc-900 tracking-tight mb-2">Delete {deleteFiles.length} item(s)?</h3>
-              <p className="text-zinc-500 leading-relaxed">
+              <h3 className="text-2xl font-bold text-slate-900 tracking-tight mb-2">Delete {deleteFiles.length} item(s)?</h3>
+              <p className="text-slate-500 leading-relaxed text-sm">
                 This action is permanent and cannot be undone. These files will be removed from your User Storage Root on the HPC cluster.
               </p>
               <div className="flex gap-3 mt-8">
                 <button 
                   onClick={() => setDeleteFiles([])}
-                  className="flex-1 px-6 py-3 rounded-xl font-bold text-zinc-600 hover:bg-zinc-100 transition-colors"
+                  className="flex-1 px-6 py-3 rounded-lg font-bold text-slate-600 hover:bg-slate-100 transition-colors"
                 >
                   Cancel
                 </button>
@@ -406,14 +395,14 @@ function StoragePage() {
                     setDeleteFiles([])
                     setSelectedIds(new Set())
                   }}
-                  className="flex-1 px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-600/20"
+                  className="flex-1 px-6 py-3 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-600/20"
                 >
                   Delete Forever
                 </button>
               </div>
             </motion.div>
           </motion.div>
-        )}
+        ) : null}
       </AnimatePresence>
     </div>
   )

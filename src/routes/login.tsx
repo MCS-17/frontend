@@ -14,13 +14,13 @@ function LoginPage() {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
-    
+
     // Mocking a seamless transition
     setTimeout(() => {
       localStorage.setItem("isAuthenticated", "true")
       // Dispatch a storage event so __root can listen if needed, 
       // but TanStack Router's navigation usually suffices for SPA state
-      window.dispatchEvent(new Event('storage')) 
+      window.dispatchEvent(new Event('storage'))
       navigate({ to: "/chat" })
     }, 800)
   }
@@ -44,7 +44,7 @@ function LoginPage() {
       >
         {/* Branding Section (Outside the card) */}
         <div className="flex flex-col items-center mb-8">
-          <motion.div 
+          <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ type: "spring", delay: 0.2 }}
@@ -56,13 +56,13 @@ function LoginPage() {
           <p className="text-zinc-500 mt-2 font-semibold tracking-wide uppercase text-xs">Student HPC Portal</p>
         </div>
 
-        <div className="bg-white/60 backdrop-blur-3xl border border-gray-200/50 rounded-[2.5rem] shadow-2xl shadow-gray-200/50 p-10 relative overflow-hidden">
+        <div className="bg-white/50 backdrop-blur-2xl border border-white/20 rounded-[2.5rem] shadow-2xl shadow-gray-200/50 p-10 relative overflow-hidden">
           <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-4">
               <div className="relative group">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-zinc-400 transition-colors group-focus-within:text-amber-500" />
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   placeholder="Username"
                   className="w-full h-14 pl-12 pr-4 bg-white/50 border border-zinc-200 rounded-2xl outline-none focus:border-amber-400 transition-all font-medium placeholder:text-zinc-400 text-black"
                   required
@@ -70,8 +70,8 @@ function LoginPage() {
               </div>
               <div className="relative group">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-zinc-400 transition-colors group-focus-within:text-amber-500" />
-                <input 
-                  type="password" 
+                <input
+                  type="password"
                   placeholder="Password"
                   className="w-full h-14 pl-12 pr-4 bg-white/50 border border-zinc-200 rounded-2xl outline-none focus:border-amber-400 transition-all font-medium placeholder:text-zinc-400 text-black"
                   required
