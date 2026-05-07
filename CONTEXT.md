@@ -14,9 +14,25 @@ A server-side location where files can be uploaded for use in High-Performance C
 ### Chat Context
 Files that are provided to the chat model to inform its responses.
 
+### Sidebar
+A collapsible navigation component used to switch between different functional areas of the MONHPC platform.
+
+### Mini-Sidebar (Collapsed)
+A state of the sidebar where only icons are visible, maximizing the content area for the main application.
+
+### Mobile Drawer
+A state of the sidebar on small screens where it is hidden by default and slides over the content when triggered by a menu button.
+
 ## Constraints & Rules
 
 - **Max Files:** 10 files per message.
 - **File Size:** No maximum size (supported for large HPC datasets).
 - **Iconography:** Files should use specialized icons based on their extension (e.g., FileImage, FileCode).
 - **Extension Visibility:** The file extension must always be visible, even if the filename itself is truncated.
+
+## Constraints & Rules (Sidebar)
+
+- **Interaction:** Manual toggle (chevron/hamburger).
+- **Navigation:** Must include Chat, Storage, and Dashboard tabs.
+- **Aesthetics:** Glassmorphic translucent design with high-quality icons.
+- **Branding:** MONHPC text with an associated tech-themed icon.

@@ -70,7 +70,6 @@ function ChatPage() {
     const incoming = Array.from(newFiles)
 
     setStagedFiles(prev => {
-      // Simple append, we'll handle duplicates by UI keys
       const combined = [...prev, ...incoming].slice(0, MAX_FILES)
       return combined
     })
@@ -114,17 +113,17 @@ function ChatPage() {
   }
 
   return (
-    <main className="bg-white min-h-dvh w-full flex flex-col items-center pt-[35vh]">
+    <main className="bg-transparent min-h-dvh w-full flex flex-col items-center pt-[35vh]">
       <div className="flex flex-col items-center h-auto w-full">
         <div className='flex flex-col items-center pb-5'>
           <div className='text-black text-3xl font-semibold'>Welcome Back!</div>
         </div>
-        <div className='flex flex-row w-full h-auto space-x-5 justify-center items-end'> 
+        <div className='flex flex-row w-full h-auto space-x-5 justify-center items-start'> 
           <div 
             onDragOver={onDragOver}
             onDragLeave={onDragLeave}
             onDrop={onDrop}
-            className={`flex flex-col w-2/5 h-auto bg-white border-2 rounded-3xl text-black text-md shadow-sm transition-all duration-200 ${
+            className={`flex flex-col w-2/5 h-auto bg-white/80 backdrop-blur-md border-2 rounded-3xl text-black text-md shadow-sm transition-all duration-200 ${
               isDragging ? 'border-amber-500 bg-amber-50/30' : 'border-amber-400'
             }`}
           >
@@ -141,7 +140,7 @@ function ChatPage() {
                       animate={{ scale: 1, opacity: 1 }}
                       exit={{ scale: 0.8, opacity: 0 }}
                       transition={{ type: "spring", duration: 0.4, bounce: 0.3 }}
-                      className="flex items-center gap-1.5 bg-gray-100 px-3 py-1.5 rounded-xl border border-gray-200 group"
+                      className="flex items-center gap-1.5 bg-gray-100/50 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-gray-200 group"
                     >
                       <div className="text-gray-500">
                         {getFileIcon(file.name)}
@@ -183,7 +182,7 @@ function ChatPage() {
               ></textarea>
             </div>
           </div>
-          <motion.button className='flex size-14 rounded-full bg-amber-400 hover:bg-amber-500 transition-colors shadow-sm justify-center items-center shrink-0 mb-0.5'
+          <motion.button className='flex size-14 rounded-full bg-amber-400 hover:bg-amber-500 transition-colors shadow-sm justify-center items-center shrink-0 mt-0.5'
           whileHover={{
             rotate: -25
           }}>
