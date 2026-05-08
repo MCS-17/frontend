@@ -5,6 +5,7 @@ import { TanStackDevtools } from '@tanstack/react-devtools'
 import { AnimatePresence, motion } from 'motion/react'
 import { Sidebar } from '../components/Sidebar'
 import appCss from '../styles.css?url'
+import { hasAccessToken } from '../lib/auth'
 
 const THEME_INIT_SCRIPT = `(function(){try{var stored=window.localStorage.getItem('theme');var mode=(stored==='light'||stored==='dark'||stored==='auto')?stored:'auto';var prefersDark=window.matchMedia('(prefers-color-scheme: dark)').matches;var resolved=mode==='auto'?(prefersDark?'dark':'light'):mode;var root=document.documentElement;root.classList.remove('light','dark');root.classList.add(resolved);if(mode==='auto'){root.removeAttribute('data-theme')}else{root.setAttribute('data-theme',mode)}root.style.colorScheme=resolved;}catch(e){}})();`
 
@@ -42,22 +43,35 @@ export const Route = createRootRoute({
 function RootLayout() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false
-    return localStorage.getItem("isAuthenticated") === "true"
+    return hasAccessToken()
   })
   const location = useLocation()
   const navigate = useNavigate()
 
   useEffect(() => {
-    const auth = localStorage.getItem("isAuthenticated") === "true"
-    if (auth !== isAuthenticated) {
+    const syncAuthState = () => {
+      const auth = hasAccessToken()
       setIsAuthenticated(auth)
+
+      if (!auth && location.pathname !== "/login") {
+        navigate({ to: "/login", replace: true })
+      }
+
+      if (auth && location.pathname === "/login") {
+        navigate({ to: "/chat", replace: true })
+      }
     }
 
-    // Global Auth Guard: Redirect to login if not authenticated and not already on login page
-    if (!auth && location.pathname !== '/login') {
-      navigate({ to: '/login', replace: true })
+    syncAuthState()
+
+    window.addEventListener("auth-change", syncAuthState)
+    window.addEventListener("storage", syncAuthState)
+
+    return () => {
+      window.removeEventListener("auth-change", syncAuthState)
+      window.removeEventListener("storage", syncAuthState)
     }
-  }, [location.pathname, navigate, isAuthenticated])
+  }, [location.pathname, navigate])
 
   const isLoginRoute = location.pathname === '/login'
 

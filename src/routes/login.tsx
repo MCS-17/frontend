@@ -1,7 +1,9 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { motion } from "motion/react"
-import { Cpu, Lock, User, ArrowRight } from "lucide-react"
-import { useState } from "react"
+import { AlertCircle, ArrowRight, Cpu, Lock, Mail } from "lucide-react"
+import { useState, type FormEvent } from "react"
+import { ApiError } from "../lib/api"
+import { login, register } from "../lib/auth"
 
 export const Route = createFileRoute('/login')({
   component: LoginPage,
@@ -11,18 +13,34 @@ function LoginPage() {
   const navigate = useNavigate()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleLogin = (e: React.FormEvent) => {
+  const [isRegisterMode, setIsRegisterMode] = useState(false)
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [error, setError] = useState("")
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    setError("")
     setIsSubmitting(true)
 
-    // Mocking a seamless transition
-    setTimeout(() => {
-      localStorage.setItem("isAuthenticated", "true")
-      // Dispatch a storage event so __root can listen if needed, 
-      // but TanStack Router's navigation usually suffices for SPA state
-      window.dispatchEvent(new Event('storage'))
-      navigate({ to: "/chat" })
-    }, 800)
+    try {
+      if (isRegisterMode) {
+        await register(email, password)
+      }
+
+      await login(email, password)
+      navigate({ to: "/chat", replace: true })
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.detail)
+      } else if (err instanceof TypeError) {
+        setError("Cannot reach backend. Make sure FastAPI is running on port 8000.")
+      } else {
+        setError("Something went wrong. Please try again.")
+      }
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -57,13 +75,22 @@ function LoginPage() {
         </div>
 
         <div className="bg-white/50 backdrop-blur-2xl border border-white/20 rounded-[2.5rem] shadow-2xl shadow-gray-200/50 p-10 relative overflow-hidden">
-          <form onSubmit={handleLogin} className="space-y-6">
+          {error ? (
+            <div className="mb-5 flex gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+              <AlertCircle className="size-5 shrink-0" />
+              <span>{error}</span>
+            </div>
+          ) : null}
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-4">
               <div className="relative group">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-zinc-400 transition-colors group-focus-within:text-amber-500" />
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-zinc-400 transition-colors group-focus-within:text-amber-500" />
                 <input
-                  type="text"
-                  placeholder="Username"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Email"
+                  autoComplete="email"
                   className="w-full h-14 pl-12 pr-4 bg-white/50 border border-zinc-200 rounded-2xl outline-none focus:border-amber-400 transition-all font-medium placeholder:text-zinc-400 text-black"
                   required
                 />
@@ -72,7 +99,11 @@ function LoginPage() {
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-zinc-400 transition-colors group-focus-within:text-amber-500" />
                 <input
                   type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   placeholder="Password"
+                  autoComplete={isRegisterMode ? "new-password" : "current-password"}
+                  minLength={6}
                   className="w-full h-14 pl-12 pr-4 bg-white/50 border border-zinc-200 rounded-2xl outline-none focus:border-amber-400 transition-all font-medium placeholder:text-zinc-400 text-black"
                   required
                 />
@@ -88,12 +119,24 @@ function LoginPage() {
                 <div className="size-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
-                  Sign In
+                  {isRegisterMode ? "Create Account" : "Sign In"}
                   <ArrowRight className="size-5 group-hover:translate-x-1 transition-transform" />
                 </>
               )}
             </button>
           </form>
+          <button
+            type="button"
+            onClick={() => {
+              setIsRegisterMode((current) => !current)
+              setError("")
+            }}
+            className="mt-6 w-full text-sm font-semibold text-zinc-500 hover:text-zinc-900 transition-colors"
+          >
+            {isRegisterMode
+              ? "Already have an account? Sign in"
+              : "No account yet? Create one"}
+          </button>
         </div>
       </motion.div>
     </div>
