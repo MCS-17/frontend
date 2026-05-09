@@ -15,6 +15,8 @@ import {
   Upload,
   X,
   AlertCircle,
+  CheckSquare,
+  Square,
 } from "lucide-react"
 import {
   useEffect,
@@ -22,8 +24,6 @@ import {
   useRef,
   useState,
   type ChangeEvent,
-  type MouseEvent,
-  type PointerEvent,
 } from "react"
 import { motion, AnimatePresence } from "motion/react"
 import {
@@ -107,14 +107,8 @@ const joinPath = (parts: string[]) => {
 function StoragePage() {
   const uploadInputRef = useRef<HTMLInputElement | null>(null)
 
-  const longPressTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(
-    null,
-  )
-  const longPressTriggeredRef = useRef(false)
-
   const [items, setItems] = useState<StorageItem[]>([])
   const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set())
-  const [lastSelectedPath, setLastSelectedPath] = useState<string | null>(null)
   const [currentPath, setCurrentPath] = useState("")
   const [previewItem, setPreviewItem] = useState<StorageItem | null>(null)
   const [deleteItems, setDeleteItems] = useState<StorageItem[]>([])
@@ -144,7 +138,6 @@ function StoragePage() {
       setItems(response.items)
       setCurrentPath(response.currentPath)
       setSelectedPaths(new Set())
-      setLastSelectedPath(null)
     } catch (err) {
       console.error("Load files failed:", err)
       setError(err instanceof Error ? err.message : "Failed to load files")
@@ -157,111 +150,39 @@ function StoragePage() {
     void loadFiles("")
   }, [])
 
-  const clearLongPressTimer = () => {
-    if (longPressTimerRef.current) {
-      window.clearTimeout(longPressTimerRef.current)
-      longPressTimerRef.current = null
+  const handleRowClick = (item: StorageItem) => {
+    if (item.type === "folder") {
+      void loadFiles(item.path)
+      return
     }
+
+    setPreviewItem(item)
   }
 
-  const handleLongPressStart = (
-    event: PointerEvent<HTMLDivElement>,
-    item: StorageItem,
-  ) => {
-    if (event.pointerType === "mouse" && event.button !== 0) return
-
-    longPressTriggeredRef.current = false
-    clearLongPressTimer()
-
-    longPressTimerRef.current = window.setTimeout(() => {
-      longPressTriggeredRef.current = true
-
-      setSelectedPaths((previous) => {
-        const next = new Set(previous)
-
-        if (next.has(item.path)) {
-          next.delete(item.path)
-        } else {
-          next.add(item.path)
-        }
-
-        return next
-      })
-
-      setLastSelectedPath(item.path)
-    }, 550)
-  }
-
-  const handleLongPressEnd = () => {
-    clearLongPressTimer()
-  }
-
-  const handleSelect = (event: MouseEvent, item: StorageItem) => {
-    const isShift = event.shiftKey
-    const isCtrl = event.ctrlKey || event.metaKey
-
+  const handleToggleSelect = (item: StorageItem) => {
     setSelectedPaths((previous) => {
       const next = new Set(previous)
 
-      if (isShift && lastSelectedPath) {
-        const currentIndex = items.findIndex((file) => file.path === item.path)
-        const lastIndex = items.findIndex(
-          (file) => file.path === lastSelectedPath,
-        )
-
-        if (currentIndex === -1 || lastIndex === -1) return previous
-
-        const start = Math.min(currentIndex, lastIndex)
-        const end = Math.max(currentIndex, lastIndex)
-
-        items.slice(start, end + 1).forEach((file) => {
-          next.add(file.path)
-        })
-      } else if (isCtrl) {
-        if (next.has(item.path)) {
-          next.delete(item.path)
-        } else {
-          next.add(item.path)
-        }
+      if (next.has(item.path)) {
+        next.delete(item.path)
       } else {
-        next.clear()
         next.add(item.path)
       }
 
       return next
     })
-
-    setLastSelectedPath(item.path)
   }
 
-  const handleRowClick = (event: MouseEvent, item: StorageItem) => {
-    if (longPressTriggeredRef.current) {
-      longPressTriggeredRef.current = false
-      return
-    }
+  const handleSelectAll = () => {
+    if (items.length === 0) return
 
-    const isMultiSelect = event.shiftKey || event.ctrlKey || event.metaKey
+    setSelectedPaths((previous) => {
+      if (previous.size === items.length) {
+        return new Set()
+      }
 
-    if (isMultiSelect) {
-      handleSelect(event, item)
-      return
-    }
-
-    if (item.type === "folder") {
-      void loadFiles(item.path)
-      return
-    }
-
-    setPreviewItem(item)
-  }
-
-  const handleOpenItem = (item: StorageItem) => {
-    if (item.type === "folder") {
-      void loadFiles(item.path)
-      return
-    }
-
-    setPreviewItem(item)
+      return new Set(items.map((item) => item.path))
+    })
   }
 
   const handleNavigateHome = () => {
@@ -378,6 +299,8 @@ function StoragePage() {
     }
   }
 
+  const isAllSelected = items.length > 0 && selectedPaths.size === items.length
+
   return (
     <div className="p-6 lg:p-10 flex flex-col h-full gap-6 relative">
       <input
@@ -389,22 +312,43 @@ function StoragePage() {
       />
 
       <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4">
           <h1 className="text-3xl font-bold text-zinc-900 tracking-tight">
             Files & Storage
           </h1>
 
-          <button
-            type="button"
-            onClick={() => void loadFiles(currentPath)}
-            disabled={isLoading}
-            className="flex items-center gap-2 px-3 py-2 text-sm font-bold text-zinc-500 hover:text-zinc-900 hover:bg-black/5 rounded-xl transition-all disabled:opacity-50 cursor-pointer"
-          >
-            <RefreshCw
-              className={`size-4 ${isLoading ? "animate-spin" : ""}`}
-            />
-            Refresh
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleOpenCreateFolderModal}
+              className="flex items-center gap-2 px-3 py-2 text-sm font-bold text-zinc-500 hover:text-zinc-900 hover:bg-black/5 rounded-xl transition-all cursor-pointer"
+            >
+              <FolderPlus className="size-4" />
+              New Folder
+            </button>
+
+            <button
+              type="button"
+              onClick={handleUploadClick}
+              disabled={isUploading}
+              className="flex items-center gap-2 px-3 py-2 text-sm font-bold text-zinc-500 hover:text-zinc-900 hover:bg-black/5 rounded-xl transition-all disabled:opacity-50 cursor-pointer"
+            >
+              <Upload className="size-4" />
+              {isUploading ? "Uploading files..." : "Upload Files"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => void loadFiles(currentPath)}
+              disabled={isLoading}
+              className="flex items-center gap-2 px-3 py-2 text-sm font-bold text-zinc-500 hover:text-zinc-900 hover:bg-black/5 rounded-xl transition-all disabled:opacity-50 cursor-pointer"
+            >
+              <RefreshCw
+                className={`size-4 ${isLoading ? "animate-spin" : ""}`}
+              />
+              Refresh
+            </button>
+          </div>
         </div>
 
         {error ? (
@@ -461,7 +405,22 @@ function StoragePage() {
       </div>
 
       <div className="flex-1 min-h-0 bg-white/50 backdrop-blur-2xl border border-white/20 rounded-xl shadow-xl shadow-slate-200/50 overflow-hidden flex flex-col relative">
-        <div className="grid grid-cols-[1fr_100px_180px_120px] gap-2 px-6 py-3 border-b border-white/20 bg-white/40 text-[10px] font-bold uppercase tracking-widest text-slate-400 items-center">
+        <div className="grid grid-cols-[48px_1fr_100px_180px_120px] gap-2 px-6 py-3 border-b border-white/20 bg-white/40 text-[10px] font-bold uppercase tracking-widest text-slate-400 items-center">
+          <div className="flex items-center justify-center">
+            <button
+              type="button"
+              onClick={handleSelectAll}
+              disabled={items.length === 0}
+              title={isAllSelected ? "Unselect all" : "Select all"}
+              className="inline-flex items-center justify-center rounded-lg p-1 hover:bg-black/5 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+            >
+              {isAllSelected ? (
+                <CheckSquare className="size-4 text-amber-500" />
+              ) : (
+                <Square className="size-4" />
+              )}
+            </button>
+          </div>
           <div className="pl-2">Name</div>
           <div className="text-right pr-4">Size</div>
           <div>Last Modified</div>
@@ -492,19 +451,35 @@ function StoragePage() {
               return (
                 <motion.div
                   key={item.path}
-                  onPointerDown={(event) => handleLongPressStart(event, item)}
-                  onPointerUp={handleLongPressEnd}
-                  onPointerLeave={handleLongPressEnd}
-                  onPointerCancel={handleLongPressEnd}
-                  onClick={(event) => handleRowClick(event, item)}
-                  onDoubleClick={() => handleOpenItem(item)}
-                  onContextMenu={(event) => event.preventDefault()}
-                  className={`grid grid-cols-[1fr_100px_180px_120px] gap-2 px-6 py-2.5 items-center border-b border-slate-50 hover:bg-slate-100/50 transition-colors group cursor-pointer select-none ${
+                  onClick={() => handleRowClick(item)}
+                  className={`grid grid-cols-[48px_1fr_100px_180px_120px] gap-2 px-6 py-2.5 items-center border-b border-slate-50 hover:bg-slate-100/50 transition-colors group cursor-pointer select-none ${
                     isSelected
                       ? "bg-amber-400/10 border-l-4 border-l-amber-400 pl-[21px]"
                       : "pl-6"
                   }`}
                 >
+                  <div className="flex items-center justify-center">
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        handleToggleSelect(item)
+                      }}
+                      title={isSelected ? "Unselect" : "Select"}
+                      className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                        isSelected
+                          ? "text-amber-500 hover:bg-amber-50"
+                          : "text-slate-400 hover:text-slate-900 hover:bg-slate-200/50"
+                      }`}
+                    >
+                      {isSelected ? (
+                        <CheckSquare className="size-4" />
+                      ) : (
+                        <Square className="size-4" />
+                      )}
+                    </button>
+                  </div>
+
                   <div className="flex items-center gap-2.5 overflow-hidden">
                     <div className="shrink-0">{getFileIcon(item)}</div>
 
@@ -522,12 +497,12 @@ function StoragePage() {
                   </div>
 
                   <div className="flex items-center justify-end pr-2">
-                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-0.5 opacity-100 transition-opacity">
+
                       {!isFolder ? (
                         <>
                           <button
                             type="button"
-                            onPointerDown={(event) => event.stopPropagation()}
                             onClick={(event) => {
                               event.stopPropagation()
                               setPreviewItem(item)
@@ -540,7 +515,6 @@ function StoragePage() {
 
                           <button
                             type="button"
-                            onPointerDown={(event) => event.stopPropagation()}
                             onClick={(event) => {
                               event.stopPropagation()
                               void handleDownload(item)
@@ -555,7 +529,6 @@ function StoragePage() {
 
                       <button
                         type="button"
-                        onPointerDown={(event) => event.stopPropagation()}
                         onClick={(event) => {
                           event.stopPropagation()
                           setDeleteItems([item])
@@ -571,29 +544,6 @@ function StoragePage() {
               )
             })
           )}
-
-          <div className="grid grid-cols-[1fr_100px_180px_120px] gap-2 px-6 py-4 items-center bg-slate-50/50 border-t border-slate-100/50 group">
-            <div className="flex items-center gap-4 overflow-hidden pl-2">
-              <button
-                type="button"
-                onClick={handleOpenCreateFolderModal}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-bold text-zinc-400 hover:text-zinc-900 hover:bg-black/5 rounded-xl transition-all border border-transparent hover:border-zinc-200 cursor-pointer"
-              >
-                <FolderPlus className="size-4" />
-                New Folder
-              </button>
-
-              <button
-                type="button"
-                onClick={handleUploadClick}
-                disabled={isUploading}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-bold text-zinc-400 hover:text-zinc-900 hover:bg-black/5 rounded-xl transition-all border border-transparent hover:border-zinc-200 disabled:opacity-50 cursor-pointer"
-              >
-                <Upload className="size-4" />
-                {isUploading ? "Uploading..." : "Upload Files"}
-              </button>
-            </div>
-          </div>
         </div>
 
         <AnimatePresence>
