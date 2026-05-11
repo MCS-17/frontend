@@ -382,7 +382,7 @@ function StoragePage() {
             onClick={handleNavigateHome}
             className="px-2 py-1 text-zinc-400 hover:text-zinc-900 transition-colors cursor-pointer"
           >
-            My Files
+            My Storage
           </button>
 
           {pathSegments.map((segment, index) => (
@@ -686,7 +686,7 @@ function StoragePage() {
                   <p className="mt-1 text-sm text-zinc-500">
                     Folder will be created inside{" "}
                     <span className="font-semibold text-zinc-900">
-                      {currentPath || "My Files"}
+                      {currentPath || "My Storage"}
                     </span>
                     .
                   </p>

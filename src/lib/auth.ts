@@ -3,6 +3,7 @@ import { apiRequest } from './api'
 export type AuthUser = {
   id: string
   email: string
+  username?: string
   role: string
   status: string
 }
@@ -20,6 +21,7 @@ type RegisterResponse = {
   success: boolean
   id: string
   email: string
+  username: string
   role: string
   status: string
 }

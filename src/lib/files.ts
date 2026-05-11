@@ -10,7 +10,7 @@ export type StorageItem = {
 
 export type ListDirectoryResponse = {
   success: boolean
-  userId: string
+  username: string
   currentPath: string
   items: StorageItem[]
 }
@@ -76,11 +76,7 @@ export function createFolder(path: string) {
   )
 }
 
-export function uploadFile(
-  file: File,
-  path = "",
-  overwrite = false,
-) {
+export function uploadFile(file: File, path = "", overwrite = false) {
   const formData = new FormData()
   formData.append("file", file)
 
