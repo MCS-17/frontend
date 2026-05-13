@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { motion, AnimatePresence } from "motion/react"
 import {
   MessageSquareMore,
@@ -10,15 +10,34 @@ import {
   Menu,
   X,
   LogOut,
+  Coins,
 } from "lucide-react"
 import { Link, useLocation, useNavigate } from "@tanstack/react-router"
-import { logout } from "../lib/auth"
+import { logout, type AuthUser } from "../lib/auth"
 
 const TABS = [
   { name: "Chat", icon: MessageSquareMore, to: "/chat" },
   { name: "Dashboard", icon: LayoutGrid, to: "/" },
   { name: "Storage", icon: Folder, to: "/storage" },
 ] as const
+
+function getStoredUser(): AuthUser | null {
+  if (typeof window === "undefined") return null
+
+  const rawUser = localStorage.getItem("authUser")
+
+  if (!rawUser) return null
+
+  try {
+    return JSON.parse(rawUser) as AuthUser
+  } catch {
+    return null
+  }
+}
+
+function formatCredits(value: number | undefined) {
+  return new Intl.NumberFormat("en-MY").format(value ?? 0)
+}
 
 export function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(() => {
@@ -29,9 +48,24 @@ export function Sidebar() {
   })
 
   const [isMobileOpen, setIsMobileOpen] = useState(false)
+  const [authUser, setAuthUser] = useState<AuthUser | null>(() => getStoredUser())
 
   const location = useLocation()
   const navigate = useNavigate()
+
+  useEffect(() => {
+    const syncUser = () => {
+      setAuthUser(getStoredUser())
+    }
+
+    window.addEventListener("auth-change", syncUser)
+    window.addEventListener("storage", syncUser)
+
+    return () => {
+      window.removeEventListener("auth-change", syncUser)
+      window.removeEventListener("storage", syncUser)
+    }
+  }, [])
 
   const toggleCollapse = () => {
     const next = !isCollapsed
@@ -214,19 +248,44 @@ export function Sidebar() {
           })}
         </nav>
 
-        {/* Logout Button */}
-        <div className="p-3 border-t border-white/20">
+        {/* Credits + Logout */}
+        <div className="p-3 border-t border-white/20 space-y-1">
+          {isCollapsed ? (
+            <div
+              className="flex items-center justify-center px-3 py-2.5 text-zinc-500"
+              title={`${formatCredits(authUser?.creditBalance)} credits`}
+            >
+              <Coins className="size-[18px] text-amber-500" />
+            </div>
+          ) : (
+            <div
+              className="flex items-center gap-3 px-3 py-2 text-zinc-500"
+              title={`${formatCredits(authUser?.creditBalance)} credits`}
+            >
+              <Coins className="size-[18px] shrink-0 text-amber-500" />
+
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+                  Credits
+                </p>
+                <p className="text-sm font-bold text-zinc-800">
+                  {formatCredits(authUser?.creditBalance)}
+                </p>
+              </div>
+            </div>
+          )}
+
           <button
             onClick={handleLogout}
             className={`
               flex items-center gap-3 w-full px-3 py-2.5 rounded-xl
-              text-zinc-500 hover:bg-black/5 hover:text-zinc-900
+              text-zinc-500 hover:bg-red-50 hover:text-red-600
               transition-all duration-200 group cursor-pointer
               ${isCollapsed ? "justify-center" : ""}
             `}
             title="Log out"
           >
-            <LogOut className="size-[18px] shrink-0 text-zinc-400 group-hover:text-zinc-600 transition-colors" />
+            <LogOut className="size-[18px] shrink-0 text-zinc-400 group-hover:text-red-500 transition-colors" />
 
             {isCollapsed ? null : (
               <motion.span

@@ -6,6 +6,7 @@ export type AuthUser = {
   username?: string
   role: string
   status: string
+  creditBalance?: number
 }
 
 type LoginResponse = {
@@ -24,6 +25,7 @@ type RegisterResponse = {
   username: string
   role: string
   status: string
+  creditBalance: number
 }
 
 const ACCESS_TOKEN_KEY = 'accessToken'

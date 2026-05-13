@@ -1,10 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router"
 import {
-  CheckCircle2,
-  Clock,
+  Coins,
   Cpu,
   Download,
-  Eye,
+  FileText,
   RotateCcw,
   Search,
   SlidersHorizontal,
@@ -32,6 +31,8 @@ type Job = {
   cpus: number
   gpus: number
   memory: string
+  creditUsed: number
+  outputPreview: string
 }
 
 const mockJobs: Job[] = [
@@ -46,6 +47,9 @@ const mockJobs: Job[] = [
     cpus: 8,
     gpus: 1,
     memory: "32 GB",
+    creditUsed: 180,
+    outputPreview:
+      "[INFO] Job JOB-1042 started\n[INFO] Loading CUDA environment\n[INFO] Allocated 1 GPU and 8 CPU cores\n[INFO] Running protein folding workload\n[INFO] Current progress: 64%\n[INFO] Output file will be available after completion",
   },
   {
     id: "JOB-1041",
@@ -58,6 +62,9 @@ const mockJobs: Job[] = [
     cpus: 24,
     gpus: 0,
     memory: "48 GB",
+    creditUsed: 240,
+    outputPreview:
+      "[INFO] MPI job started\n[INFO] Nodes allocated: worker-01, worker-02, worker-03\n[INFO] Matrix benchmark running\n[INFO] Current iteration: 18 / 30\n[INFO] No errors detected",
   },
   {
     id: "JOB-1040",
@@ -69,6 +76,9 @@ const mockJobs: Job[] = [
     cpus: 16,
     gpus: 0,
     memory: "24 GB",
+    creditUsed: 0,
+    outputPreview:
+      "[PENDING] Job is waiting in the queue\n[INFO] Output preview will be available once the job starts",
   },
   {
     id: "JOB-1039",
@@ -82,6 +92,9 @@ const mockJobs: Job[] = [
     cpus: 8,
     gpus: 1,
     memory: "32 GB",
+    creditUsed: 360,
+    outputPreview:
+      "[INFO] PyTorch CUDA validation started\n[INFO] CUDA device detected\n[INFO] Training smoke test completed\n[RESULT] Validation accuracy: 97.8%\n[INFO] Job completed successfully",
   },
   {
     id: "JOB-1038",
@@ -95,6 +108,9 @@ const mockJobs: Job[] = [
     cpus: 6,
     gpus: 1,
     memory: "24 GB",
+    creditUsed: 130,
+    outputPreview:
+      "[INFO] TensorFlow smoke test started\n[INFO] Loading GPU environment\n[ERROR] Dependency mismatch detected\n[ERROR] Job failed before validation stage\n[INFO] Partial credits may be reviewed based on cancellation/refund policy",
   },
   {
     id: "JOB-1037",
@@ -108,6 +124,9 @@ const mockJobs: Job[] = [
     cpus: 12,
     gpus: 0,
     memory: "16 GB",
+    creditUsed: 70,
+    outputPreview:
+      "[INFO] OpenMPI latency check started\n[INFO] Nodes allocated: worker-01, worker-02\n[WARN] Job cancellation requested by user\n[INFO] Job cancelled\n[INFO] Partial refund may be applied based on runtime used",
   },
 ]
 
@@ -173,6 +192,10 @@ function formatTimeAgo(date: Date) {
   return `${diffDays}d ago`
 }
 
+function formatCredits(value: number) {
+  return new Intl.NumberFormat("en-MY").format(value)
+}
+
 function isActiveJob(job: Job) {
   return job.status === "running" || job.status === "pending"
 }
@@ -195,6 +218,7 @@ function DashboardPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [typeFilter, setTypeFilter] = useState<string>("all")
   const [selectedJob, setSelectedJob] = useState<Job | null>(null)
+  const [previewJob, setPreviewJob] = useState<Job | null>(null)
 
   const filteredJobs = useMemo(() => {
     return mockJobs
@@ -212,28 +236,21 @@ function DashboardPage() {
   }, [searchQuery, statusFilter, typeFilter])
 
   return (
-    <div className="min-h-full p-6 lg:p-10">
-      <div className="mx-auto flex max-w-7xl flex-col gap-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/60 px-3 py-1 text-xs font-bold uppercase tracking-widest text-zinc-500 shadow-sm backdrop-blur-xl">
-              <Cpu className="size-3.5 text-amber-500" />
-              MONHPC Dashboard
-            </div>
+    <div className="box-border h-full overflow-hidden p-6 lg:p-10">
+      <div className="mx-auto flex h-full max-w-7xl flex-col gap-6 overflow-hidden">
+        <div className="shrink-0">
 
-            <h1 className="text-3xl font-bold tracking-tight text-zinc-900 lg:text-4xl">
-              My Jobs
-            </h1>
+          <h1 className="text-3xl font-bold tracking-tight text-zinc-900 lg:text-4xl">
+            My Dashboard
+          </h1>
 
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500">
-              View your submitted jobs, check their current status, and open each job for detailed resource information.
-            </p>
-          </div>
-
+          <p className="mt-2 max-w-full text-sm leading-6 text-zinc-500">
+            View your submitted jobs, check their current status, and open each job for detailed resource information.
+          </p>
         </div>
 
-        <div className="overflow-hidden rounded-3xl border border-white/30 bg-white/60 shadow-xl shadow-slate-200/50 backdrop-blur-2xl">
-          <div className="border-b border-slate-100 px-5 py-4">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-white/30 bg-white/60 shadow-xl shadow-slate-200/50 backdrop-blur-2xl">
+          <div className="shrink-0 border-b border-slate-100 px-5 py-4">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <p className="text-sm text-zinc-500">
                 Click any job row to view its full details.
@@ -292,9 +309,9 @@ function DashboardPage() {
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="min-h-0 flex-1 overflow-auto">
             <table className="w-full border-collapse">
-              <thead>
+              <thead className="sticky top-0 z-10">
                 <tr className="bg-zinc-900 text-left text-[11px] font-bold uppercase tracking-widest text-zinc-300">
                   <th className="px-5 py-3">Job Name</th>
                   <th className="px-5 py-3">Job ID</th>
@@ -302,6 +319,7 @@ function DashboardPage() {
                   <th className="px-5 py-3">Status</th>
                   <th className="px-5 py-3">Submitted</th>
                   <th className="px-5 py-3">Runtime</th>
+                  <th className="px-5 py-3 text-right">Credits</th>
                   <th className="px-5 py-3 text-right">Actions</th>
                 </tr>
               </thead>
@@ -309,7 +327,7 @@ function DashboardPage() {
                 {filteredJobs.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={7}
+                      colSpan={8}
                       className="px-5 py-12 text-center text-sm font-semibold text-zinc-400"
                     >
                       No jobs match your filters.
@@ -344,24 +362,30 @@ function DashboardPage() {
                       <td className="whitespace-nowrap px-5 py-3 text-xs font-medium text-zinc-500">
                         {job.runtime || (job.status === "pending" ? "Queued" : "—")}
                       </td>
+                      <td className="whitespace-nowrap px-5 py-3 text-right text-xs font-bold text-amber-700">
+                        <span className="inline-flex items-center justify-end gap-1.5 rounded-lg bg-amber-50 px-2 py-1">
+                          <Coins className="size-3.5" />
+                          {formatCredits(job.creditUsed)}
+                        </span>
+                      </td>
                       <td className="whitespace-nowrap px-5 py-3">
                         <div className="flex justify-end gap-1">
                           <button
                             type="button"
-                            title="View details"
+                            title="Preview output"
                             onClick={(event) => {
                               event.stopPropagation()
-                              setSelectedJob(job)
+                              setPreviewJob(job)
                             }}
                             className="rounded-lg p-1.5 text-zinc-400 transition-all hover:bg-slate-100 hover:text-zinc-900"
                           >
-                            <Eye className="size-4" />
+                            <FileText className="size-4" />
                           </button>
 
                           {!isActiveJob(job) ? (
                             <button
                               type="button"
-                              title="Download"
+                              title="Download output"
                               onClick={(event) => event.stopPropagation()}
                               className="rounded-lg p-1.5 text-zinc-400 transition-all hover:bg-slate-100 hover:text-zinc-900"
                             >
@@ -399,7 +423,7 @@ function DashboardPage() {
             </table>
           </div>
 
-          <div className="flex flex-col gap-3 border-t border-slate-100 px-5 py-3 text-xs font-semibold text-zinc-500 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex shrink-0 flex-col gap-3 border-t border-slate-100 px-5 py-3 text-xs font-semibold text-zinc-500 sm:flex-row sm:items-center sm:justify-between">
             <span>{filteredJobs.length} jobs shown</span>
             <span>{mockJobs.length} records total</span>
           </div>
@@ -412,7 +436,7 @@ function DashboardPage() {
           onClick={() => setSelectedJob(null)}
         >
           <div
-            className="w-full max-w-3xl overflow-hidden rounded-3xl bg-white shadow-2xl"
+            className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white shadow-2xl"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex flex-col gap-4 border-b border-slate-100 px-6 py-5 md:flex-row md:items-center md:justify-between">
@@ -461,16 +485,33 @@ function DashboardPage() {
                   value: selectedJob.completedAt ? formatDate(selectedJob.completedAt) : "—",
                 },
                 {
-                  label: "Queue",
-                  value: selectedJob.status === "pending" ? "Waiting" : "Normal",
+                  label: "Credits Used",
+                  value: `${formatCredits(selectedJob.creditUsed)} credits`,
+                  highlight: true,
                 },
               ].map((metric) => (
                 <div
                   key={metric.label}
-                  className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4"
+                  className={`rounded-2xl border p-4 ${
+                    metric.highlight
+                      ? "border-amber-100 bg-amber-50/80"
+                      : "border-slate-100 bg-slate-50/80"
+                  }`}
                 >
-                  <div className="text-xs font-semibold text-zinc-400">{metric.label}</div>
-                  <div className="mt-1 text-sm font-bold text-zinc-800">{metric.value}</div>
+                  <div
+                    className={`text-xs font-semibold ${
+                      metric.highlight ? "text-amber-600" : "text-zinc-400"
+                    }`}
+                  >
+                    {metric.label}
+                  </div>
+                  <div
+                    className={`mt-1 text-sm font-bold ${
+                      metric.highlight ? "text-amber-800" : "text-zinc-800"
+                    }`}
+                  >
+                    {metric.value}
+                  </div>
                 </div>
               ))}
             </div>
@@ -479,6 +520,15 @@ function DashboardPage() {
               <h3 className="text-sm font-bold text-zinc-900">Job actions</h3>
 
               <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPreviewJob(selectedJob)}
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold text-zinc-600 transition-all hover:bg-slate-50 hover:text-zinc-900"
+                >
+                  <FileText className="size-4" />
+                  Preview output
+                </button>
+
                 <button
                   type="button"
                   className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold text-zinc-600 transition-all hover:bg-slate-50 hover:text-zinc-900"
@@ -507,6 +557,51 @@ function DashboardPage() {
                   </button>
                 ) : null}
               </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {previewJob ? (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 p-6 backdrop-blur-sm"
+          onClick={() => setPreviewJob(null)}
+        >
+          <div
+            className="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
+              <div>
+                <h2 className="text-lg font-bold text-zinc-900">Output Preview</h2>
+                <p className="mt-1 text-sm text-zinc-500">
+                  {previewJob.name} · {previewJob.id}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setPreviewJob(null)}
+                className="rounded-xl p-2 text-zinc-400 transition-all hover:bg-slate-100 hover:text-zinc-900"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-auto bg-zinc-950 p-5">
+              <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-6 text-zinc-100">
+                {previewJob.outputPreview}
+              </pre>
+            </div>
+
+            <div className="flex justify-end border-t border-slate-100 px-6 py-4">
+              <button
+                type="button"
+                className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2 text-sm font-bold text-white transition-all hover:bg-zinc-800"
+              >
+                <Download className="size-4" />
+                Download output
+              </button>
             </div>
           </div>
         </div>
