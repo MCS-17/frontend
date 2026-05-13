@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, type ComponentType } from "react"
 import { motion, AnimatePresence } from "motion/react"
 import {
   MessageSquareMore,
@@ -11,15 +11,22 @@ import {
   X,
   LogOut,
   Coins,
+  ShieldCheck,
 } from "lucide-react"
 import { Link, useLocation, useNavigate } from "@tanstack/react-router"
 import { logout, type AuthUser } from "../lib/auth"
 
-const TABS = [
+type NavigationTab = {
+  name: string
+  icon: ComponentType<{ className?: string }>
+  to: "/" | "/chat" | "/storage" | "/admin"
+}
+
+const TABS: NavigationTab[] = [
   { name: "Chat", icon: MessageSquareMore, to: "/chat" },
   { name: "Dashboard", icon: LayoutGrid, to: "/" },
   { name: "Storage", icon: Folder, to: "/storage" },
-] as const
+]
 
 function getStoredUser(): AuthUser | null {
   if (typeof window === "undefined") return null
@@ -39,6 +46,10 @@ function formatCredits(value: number | undefined) {
   return new Intl.NumberFormat("en-MY").format(value ?? 0)
 }
 
+function canAccessAdmin(user: AuthUser | null) {
+  return user?.role === "admin" || user?.role === "staff"
+}
+
 export function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(() => {
     if (typeof window === "undefined") return false
@@ -52,6 +63,13 @@ export function Sidebar() {
 
   const location = useLocation()
   const navigate = useNavigate()
+
+  const tabs: NavigationTab[] = canAccessAdmin(authUser)
+    ? [
+        ...TABS,
+        { name: "Admin", icon: ShieldCheck, to: "/admin" },
+      ]
+    : TABS
 
   useEffect(() => {
     const syncUser = () => {
@@ -81,9 +99,9 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Mobile Menu Button */}
       <div className="lg:hidden fixed top-4 left-4 z-50">
         <button
+          type="button"
           onClick={() => setIsMobileOpen(true)}
           className="p-2 bg-white border border-zinc-200 rounded-lg shadow-sm text-zinc-600 hover:text-zinc-900 transition-colors cursor-pointer"
         >
@@ -91,7 +109,6 @@ export function Sidebar() {
         </button>
       </div>
 
-      {/* Mobile Drawer Overlay */}
       <AnimatePresence>
         {isMobileOpen ? (
           <motion.div
@@ -104,7 +121,6 @@ export function Sidebar() {
         ) : null}
       </AnimatePresence>
 
-      {/* Sidebar Content */}
       <motion.aside
         initial={false}
         animate={{
@@ -123,9 +139,9 @@ export function Sidebar() {
           transition-colors duration-300
         "
       >
-        {/* Logo / Collapse Toggle */}
         <div className="h-16 flex items-center px-4 mb-4 relative">
           <button
+            type="button"
             onClick={toggleCollapse}
             className={`
               flex items-center w-full p-2 rounded-xl transition-all duration-300 group cursor-pointer
@@ -185,6 +201,7 @@ export function Sidebar() {
           </button>
 
           <button
+            type="button"
             onClick={() => setIsMobileOpen(false)}
             className="lg:hidden absolute right-4 p-1.5 text-zinc-500 hover:text-zinc-900 cursor-pointer"
           >
@@ -192,9 +209,8 @@ export function Sidebar() {
           </button>
         </div>
 
-        {/* Navigation Tabs */}
         <nav className="flex-1 px-3 space-y-1">
-          {TABS.map((tab) => {
+          {tabs.map((tab) => {
             const isActive = location.pathname === tab.to
             const Icon = tab.icon
 
@@ -248,7 +264,6 @@ export function Sidebar() {
           })}
         </nav>
 
-        {/* Credits + Logout */}
         <div className="p-3 border-t border-white/20 space-y-1">
           {isCollapsed ? (
             <div
@@ -276,6 +291,7 @@ export function Sidebar() {
           )}
 
           <button
+            type="button"
             onClick={handleLogout}
             className={`
               flex items-center gap-3 w-full px-3 py-2.5 rounded-xl
