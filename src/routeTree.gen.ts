@@ -14,6 +14,8 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ChatIndexRouteImport } from './routes/chat/index'
+import { Route as ChatConvoIdRouteImport } from './routes/chat/$convoId'
 
 const StorageRoute = StorageRouteImport.update({
   id: '/storage',
@@ -40,41 +42,71 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ChatIndexRoute = ChatIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ChatRoute,
+} as any)
+const ChatConvoIdRoute = ChatConvoIdRouteImport.update({
+  id: '/$convoId',
+  path: '/$convoId',
+  getParentRoute: () => ChatRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
-  '/chat': typeof ChatRoute
+  '/chat': typeof ChatRouteWithChildren
   '/login': typeof LoginRoute
   '/storage': typeof StorageRoute
+  '/chat/$convoId': typeof ChatConvoIdRoute
+  '/chat/': typeof ChatIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
-  '/chat': typeof ChatRoute
   '/login': typeof LoginRoute
   '/storage': typeof StorageRoute
+  '/chat/$convoId': typeof ChatConvoIdRoute
+  '/chat': typeof ChatIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
-  '/chat': typeof ChatRoute
+  '/chat': typeof ChatRouteWithChildren
   '/login': typeof LoginRoute
   '/storage': typeof StorageRoute
+  '/chat/$convoId': typeof ChatConvoIdRoute
+  '/chat/': typeof ChatIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/chat' | '/login' | '/storage'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/chat'
+    | '/login'
+    | '/storage'
+    | '/chat/$convoId'
+    | '/chat/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/chat' | '/login' | '/storage'
-  id: '__root__' | '/' | '/admin' | '/chat' | '/login' | '/storage'
+  to: '/' | '/admin' | '/login' | '/storage' | '/chat/$convoId' | '/chat'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/chat'
+    | '/login'
+    | '/storage'
+    | '/chat/$convoId'
+    | '/chat/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
-  ChatRoute: typeof ChatRoute
+  ChatRoute: typeof ChatRouteWithChildren
   LoginRoute: typeof LoginRoute
   StorageRoute: typeof StorageRoute
 }
@@ -116,13 +148,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/chat/': {
+      id: '/chat/'
+      path: '/'
+      fullPath: '/chat/'
+      preLoaderRoute: typeof ChatIndexRouteImport
+      parentRoute: typeof ChatRoute
+    }
+    '/chat/$convoId': {
+      id: '/chat/$convoId'
+      path: '/$convoId'
+      fullPath: '/chat/$convoId'
+      preLoaderRoute: typeof ChatConvoIdRouteImport
+      parentRoute: typeof ChatRoute
+    }
   }
 }
+
+interface ChatRouteChildren {
+  ChatConvoIdRoute: typeof ChatConvoIdRoute
+  ChatIndexRoute: typeof ChatIndexRoute
+}
+
+const ChatRouteChildren: ChatRouteChildren = {
+  ChatConvoIdRoute: ChatConvoIdRoute,
+  ChatIndexRoute: ChatIndexRoute,
+}
+
+const ChatRouteWithChildren = ChatRoute._addFileChildren(ChatRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
-  ChatRoute: ChatRoute,
+  ChatRoute: ChatRouteWithChildren,
   LoginRoute: LoginRoute,
   StorageRoute: StorageRoute,
 }

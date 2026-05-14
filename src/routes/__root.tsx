@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { HeadContent, Outlet, Scripts, createRootRoute, useLocation, useNavigate } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
@@ -8,6 +9,8 @@ import appCss from '../styles.css?url'
 import { hasAccessToken } from '../lib/auth'
 
 const THEME_INIT_SCRIPT = `(function(){try{var stored=window.localStorage.getItem('theme');var mode=(stored==='light'||stored==='dark'||stored==='auto')?stored:'auto';var prefersDark=window.matchMedia('(prefers-color-scheme: dark)').matches;var resolved=mode==='auto'?(prefersDark?'dark':'light'):mode;var root=document.documentElement;root.classList.remove('light','dark');root.classList.add(resolved);if(mode==='auto'){root.removeAttribute('data-theme')}else{root.setAttribute('data-theme',mode)}root.style.colorScheme=resolved;}catch(e){}})();`
+
+const queryClient = new QueryClient()
 
 export const Route = createRootRoute({
   head: () => ({
@@ -41,10 +44,12 @@ export const Route = createRootRoute({
 })
 
 function RootLayout() {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false
-    return hasAccessToken()
-  })
+  // const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+  //   if (typeof window === 'undefined') return false
+  //   return hasAccessToken()
+  // })
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -76,36 +81,38 @@ function RootLayout() {
   const isLoginRoute = location.pathname === '/login'
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-white relative">
-      {/* Ambient Glassmorphism Blobs */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-[10%] -left-[10%] size-[800px] rounded-full bg-amber-400/60 blur-[250px] opacity-50" />
-        <div className="absolute top-[20%] -right-[10%] size-[900px] rounded-full bg-blue-400/50 blur-[300px] opacity-40" />
-        <div className="absolute -bottom-[10%] left-[20%] size-[800px] rounded-full bg-purple-400/50 blur-[250px] opacity-30" />
-        
-        {/* Noise Texture Overlay */}
-        <div className="absolute inset-0 opacity-[0.03] mix-blend-overlay pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
+    <QueryClientProvider client={queryClient}>
+      <div className="flex h-screen w-screen overflow-hidden bg-white relative">
+        {/* Ambient Glassmorphism Blobs */}
+        <div className="fixed inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-[10%] -left-[10%] size-[800px] rounded-full bg-amber-400/60 blur-[250px] opacity-50" />
+          <div className="absolute top-[20%] -right-[10%] size-[900px] rounded-full bg-blue-400/50 blur-[300px] opacity-40" />
+          <div className="absolute -bottom-[10%] left-[20%] size-[800px] rounded-full bg-purple-400/50 blur-[250px] opacity-30" />
+          
+          {/* Noise Texture Overlay */}
+          <div className="absolute inset-0 opacity-[0.03] mix-blend-overlay pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
+        </div>
+
+        <AnimatePresence mode="wait">
+          {isAuthenticated && !isLoginRoute && (
+            <motion.div
+              key="sidebar-container"
+              initial={{ x: -240, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -240, opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="z-50"
+            >
+              <Sidebar />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <main className="flex-1 h-full overflow-y-auto relative z-10">
+          <Outlet />
+        </main>
       </div>
-
-      <AnimatePresence mode="wait">
-        {isAuthenticated && !isLoginRoute && (
-          <motion.div
-            key="sidebar-container"
-            initial={{ x: -240, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: -240, opacity: 0 }}
-            transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="z-50"
-          >
-            <Sidebar />
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <main className="flex-1 h-full overflow-y-auto relative z-10">
-        <Outlet />
-      </main>
-    </div>
+    </QueryClientProvider>
   )
 }
 
