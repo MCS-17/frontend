@@ -268,7 +268,7 @@ function DashboardPage() {
                         </span>
                       </td>
                       <td className="whitespace-nowrap px-5 py-3 text-xs font-bold uppercase tracking-wide text-zinc-500">
-                        {job.type}
+                        {job.type ?? "N/A"}
                       </td>
                       <td className="whitespace-nowrap px-5 py-3">
                         <JobStatusBadge status={job.status} />
@@ -372,7 +372,7 @@ function DashboardPage() {
                     <span className="rounded-md bg-slate-100 px-2 py-0.5 font-mono">
                       {selectedJob.job_id}
                     </span>
-                    <span>{selectedJob.type.toUpperCase()}</span>
+                    <span>{selectedJob.type ? selectedJob.type.toUpperCase() : "N/A"}</span>
                     <span>Submitted {selectedJob.submitted}</span>
                   </div>
                 </div>
