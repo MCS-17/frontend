@@ -20,7 +20,8 @@ export const Route = createFileRoute("/")({
 
 const statusTabs = [
   { label: "All", value: "all" },
-  { label: "Active", value: "active" },
+  { label: "Running", value: "running" },
+  { label: "Pending", value: "pending" },
   { label: "Completed", value: "completed" },
   { label: "Failed", value: "failed" },
   { label: "Cancelled", value: "cancelled" },

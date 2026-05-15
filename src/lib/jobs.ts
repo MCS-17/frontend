@@ -1,6 +1,6 @@
 import { apiRequest } from './api'
 
-const BASE_API_URI = '/api/jobs'
+const BASE_API_URI = '/api/slurm'
 
 export interface Job {
   job_id: string
@@ -27,17 +27,17 @@ export interface JobStats {
 }
 
 export type JobStatus = 'Running' | 'Pending' | 'Completed' | 'Failed' | 'Cancelled'
-export type JobStatusFilter = 'all' | 'active' | 'completed' | 'failed' | 'cancelled'
+export type JobStatusFilter = 'all' | 'running' | 'pending' | 'completed' | 'failed' | 'cancelled'
 
 export const jobsApi = {
   listJobs: (status?: JobStatusFilter, days = 7) => {
     const params = new URLSearchParams({ days: String(days) })
     if (status && status !== 'all') params.set('status', status)
-    return apiRequest<Job[]>(`${BASE_API_URI}?${params}`)
+    return apiRequest<Job[]>(`${BASE_API_URI}/jobs?${params}`)
   },
 
   getJob: (jobId: string) =>
-    apiRequest<Job>(`${BASE_API_URI}/${jobId}`),
+    apiRequest<Job>(`${BASE_API_URI}/jobs/${jobId}`),
 
   getStats: (days = 7) => {
     const params = new URLSearchParams({ days: String(days) })
