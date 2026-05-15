@@ -22,3 +22,10 @@
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 0, 0, 0.25);
 }
+
+/* Keep user bubble text black even inside prose */
+.prose-invert p,
+.prose-invert li,
+.prose-invert code {
+  color: black;
+}

@@ -2,12 +2,18 @@ import { apiRequest } from './api'
 
 const BASE_API_URI = '/api/ai'
 
+export interface DialogueFile {
+  name: string
+  path: string
+}
+
 export interface Dialogue {
   _id: string
   conversation_id: string
   content: string
   sent_by: 'user' | 'ai'
   timestamp: string
+  files?: DialogueFile[]
 }
 
 export interface Conversation {

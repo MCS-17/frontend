@@ -8,6 +8,8 @@ import {
 } from 'lucide-react'
 import { useRef, useState, useCallback, useEffect } from 'react'
 import { chatApi, type Dialogue } from "@/lib/chat"
+import ReactMarkdown from 'react-markdown'
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 
 export const Route = createFileRoute('/chat/$convoId')({
   component: ConversationPage,
@@ -35,6 +37,7 @@ const getFileIcon = (fileName: string) => {
 
 function MessageBubble({ dialogue, animate }: { dialogue: Dialogue; animate?: boolean }) {
   const isUser = dialogue.sent_by === 'user'
+  const hasFiles = isUser && dialogue.files && dialogue.files.length > 0
 
   const bubble = (
     <div className={`flex items-end gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
@@ -47,13 +50,48 @@ function MessageBubble({ dialogue, animate }: { dialogue: Dialogue; animate?: bo
         {isUser ? <User className="size-4" /> : <Bot className="size-4" />}
       </div>
 
-      {/* Bubble */}
-      <div className={`max-w-[70%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
-        isUser
-          ? 'bg-amber-400 text-black rounded-br-sm'
-          : 'bg-white border border-gray-200 text-gray-800 rounded-bl-sm shadow-sm'
-      }`}>
-        {dialogue.content}
+      <div className={`flex flex-col gap-1.5 max-w-[70%] ${isUser ? 'items-end' : 'items-start'}`}>
+        {/* File chips */}
+        {hasFiles && (
+          <div className="flex flex-wrap gap-1.5 justify-end">
+            {dialogue.files!.map((f, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-1.5 bg-amber-100 border border-amber-300 px-2.5 py-1 rounded-xl text-xs text-amber-800 font-medium"
+              >
+                {getFileIcon(f.name)}
+                <span className="max-w-[140px] truncate">{f.name}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Bubble */}
+        <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
+          isUser
+            ? 'bg-amber-400 text-black rounded-br-sm'
+            : 'bg-white border border-gray-200 text-gray-800 rounded-bl-sm shadow-sm'
+        }`}>
+          <div>
+            <ReactMarkdown
+              components={{
+                code({ className, children }) {
+                  const match = /language-(\w+)/.exec(className || '')
+                  const isInline = !String(children).includes('\n')
+                  return !isInline && match ? (
+                    <SyntaxHighlighter language={match[1]}>
+                      {String(children).replace(/\n$/, '')}
+                    </SyntaxHighlighter>
+                  ) : (
+                    <code className={className}>{children}</code>
+                  )
+                }
+              }}
+            >
+              {dialogue.content}
+            </ReactMarkdown>
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -125,6 +163,7 @@ function ConversationPage() {
         content: payload.message,
         sent_by: 'user',
         timestamp: new Date().toISOString(),
+        files: payload.files.map(f => ({ name: f.name, path: '' })),
       }
       setPendingMessages([userMsg])
       setMessage('')
