@@ -1,4 +1,4 @@
-import { apiRequest } from './api'
+import { apiRequest, API_BASE_URL } from './api'
 
 const BASE_API_URI = '/api/slurm'
 
@@ -17,7 +17,10 @@ export interface Job {
   nodes: string
   cpus: number
   gpus: number
-  memory: string
+  stdout: string | null
+  stderr: string | null
+  memory_requested: string
+  memory_used: string
 }
 
 export interface JobStats {
@@ -26,8 +29,69 @@ export interface JobStats {
   by_type: Record<string, number>
 }
 
+export interface JobOutput {
+  job_id: string
+  path: string | null
+  content: string
+  truncated: boolean
+}
+
 export type JobStatus = 'Running' | 'Pending' | 'Completed' | 'Failed' | 'Cancelled'
 export type JobStatusFilter = 'all' | 'running' | 'pending' | 'completed' | 'failed' | 'cancelled'
+
+function getAccessToken() {
+  if (typeof window === "undefined") return null
+  return localStorage.getItem("accessToken")
+}
+
+export async function downloadFile(url: string, name: string) {
+  const token = getAccessToken()
+  console.log('url passed in', url)
+
+  const response = await fetch(
+    url,
+    {
+      headers: token
+        ? {
+            Authorization: `Bearer ${token}`,
+          }
+        : undefined,
+    },
+  )
+
+  if (!response.ok) {
+    let detail = `Download failed with status ${response.status}`
+
+    try {
+      const data = await response.json()
+      if (data?.detail) detail = String(data.detail)
+    } catch {
+      // Ignore JSON parse error for non-JSON response
+    }
+
+    throw new Error(detail)
+  }
+
+  const contentDisposition = response.headers.get("Content-Disposition")
+  const filename = contentDisposition
+    ? contentDisposition.split("filename=")[1]?.replace(/"/g, "")
+    : `${name}.txt`
+
+  const blob = await response.blob()
+  console.log(blob)
+
+  const objUrl = window.URL.createObjectURL(blob)
+  const link = document.createElement("a")
+
+  link.href = objUrl
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+
+  link.remove()
+  window.URL.revokeObjectURL(objUrl)
+}
+
 
 export const jobsApi = {
   listJobs: (status?: JobStatusFilter, days = 7) => {
@@ -43,6 +107,18 @@ export const jobsApi = {
     const params = new URLSearchParams({ days: String(days) })
     return apiRequest<JobStats>(`${BASE_API_URI}/stats?${params}`)
   },
+
+  getOutput: (jobId: string) => 
+    apiRequest<JobOutput>(`${BASE_API_URI}/jobs/${jobId}/output`),
+
+  getError: (jobId: string) => 
+    apiRequest<JobOutput>(`${BASE_API_URI}/jobs/${jobId}/error`),
+
+  downloadOutput: (jobId: string) =>
+    downloadFile(`${API_BASE_URL}${BASE_API_URI}/jobs/${jobId}/output/download`, 'output'),
+
+  downloadError: (jobId: string) =>
+    downloadFile(`${API_BASE_URL}${BASE_API_URI}/jobs/${jobId}/error/download`, 'error')
 
 //   cancelJob: (jobId: string) =>
 //     apiRequest<{ message: string }>(`${BASE_API_URI}/${jobId}/cancel`, { method: 'POST' }),

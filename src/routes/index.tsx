@@ -10,6 +10,8 @@ import {
   SlidersHorizontal,
   TerminalSquare,
   X,
+  AlertCircle,
+  Code,
 } from "lucide-react"
 import { useMemo, useState, useCallback, useEffect } from "react"
 import { type Job, type JobStatus, type JobStatusFilter, jobsApi } from "@/lib/jobs"
@@ -18,6 +20,8 @@ export const Route = createFileRoute("/")({
   component: DashboardPage,
 })
 
+type OutputTab = "output" | "error" | "script"
+
 const statusTabs = [
   { label: "All", value: "all" },
   { label: "Running", value: "running" },
@@ -25,6 +29,12 @@ const statusTabs = [
   { label: "Completed", value: "completed" },
   { label: "Failed", value: "failed" },
   { label: "Cancelled", value: "cancelled" },
+]
+
+const outputTabs: { label: string; value: OutputTab; icon: React.ReactNode }[] = [
+  { label: "Output", value: "output", icon: <FileText className="size-3.5" /> },
+  { label: "Error", value: "error", icon: <AlertCircle className="size-3.5" /> },
+  { label: "Script", value: "script", icon: <Code className="size-3.5" /> },
 ]
 
 function getStatusStyle(status: string) {
@@ -86,13 +96,34 @@ function DashboardPage() {
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
- 
+
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [typeFilter, setTypeFilter] = useState("all")
- 
+
   const [selectedJob, setSelectedJob] = useState<Job | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
+  const [activeOutputTab, setActiveOutputTab] = useState<OutputTab>("output")
+
+  const [outputContent, setOutputContent] = useState<string>("")
+  const [outputLoading, setOutputLoading] = useState(false)
+
+  useEffect(() => {
+    if (!selectedJob) return
+    if (activeOutputTab === "script") return
+
+    setOutputLoading(true)
+    setOutputContent("")
+
+    const fetch = activeOutputTab === "output"
+      ? jobsApi.getOutput(selectedJob.job_id)
+      : jobsApi.getError(selectedJob.job_id)
+
+    fetch
+      .then((data) => setOutputContent(data.content))
+      .catch((err) => setOutputContent(`Error loading file: ${err.message}`))
+      .finally(() => setOutputLoading(false))
+  }, [selectedJob?.job_id, activeOutputTab])
 
   const loadJobs = useCallback(async () => {
     setLoading(true)
@@ -125,6 +156,7 @@ function DashboardPage() {
 
   async function openJobDetail(job: Job) {
     setSelectedJob(job)           // show modal immediately with list data
+    setActiveOutputTab("output")
     setDetailLoading(true)
     try {
       const full = await jobsApi.getJob(job.job_id)
@@ -133,6 +165,11 @@ function DashboardPage() {
     } finally {
       setDetailLoading(false)
     }
+  }
+
+  function closeModal() {
+    setSelectedJob(null)
+    setActiveOutputTab("output")
   }
 
   return (
@@ -196,11 +233,10 @@ function DashboardPage() {
                     key={tab.value}
                     type="button"
                     onClick={() => setStatusFilter(tab.value)}
-                    className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
-                      isActive
-                        ? "bg-zinc-900 text-white shadow-lg shadow-zinc-200"
-                        : "border border-slate-200 bg-white/60 text-zinc-500 hover:bg-white hover:text-zinc-900"
-                    }`}
+                    className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${isActive
+                      ? "bg-zinc-900 text-white shadow-lg shadow-zinc-200"
+                      : "border border-slate-200 bg-white/60 text-zinc-500 hover:bg-white hover:text-zinc-900"
+                      }`}
                   >
                     {tab.label}
                   </button>
@@ -256,9 +292,8 @@ function DashboardPage() {
                     <tr
                       key={job.job_id}
                       onClick={() => openJobDetail(job)}
-                      className={`cursor-pointer border-b border-slate-100 text-sm transition-colors hover:bg-amber-50/50 ${
-                        index % 2 === 0 ? "bg-white/70" : "bg-slate-50/70"
-                      }`}
+                      className={`cursor-pointer border-b border-slate-100 text-sm transition-colors hover:bg-amber-50/50 ${index % 2 === 0 ? "bg-white/70" : "bg-slate-50/70"
+                        }`}
                     >
                       <td className="whitespace-nowrap px-5 py-3 font-bold text-zinc-800">
                         {job.job_name}
@@ -283,7 +318,7 @@ function DashboardPage() {
                       <td className="whitespace-nowrap px-5 py-3 text-right text-xs font-bold text-amber-700">
                         <span className="inline-flex items-center justify-end gap-1.5 rounded-lg bg-amber-50 px-2 py-1">
                           <Coins className="size-3.5" />
-                          { formatCredits(job.credits) }
+                          {formatCredits(job.credits)}
                         </span>
                       </td>
                       <td className="whitespace-nowrap px-5 py-3">
@@ -348,143 +383,165 @@ function DashboardPage() {
         </div>
       </div>
 
-      {selectedJob ? (
+      {/* Job detail modal — split layout */}
+      {selectedJob && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-6 backdrop-blur-sm"
-          onClick={() => setSelectedJob(null)}
+          onClick={closeModal}
         >
           <div
-            className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white shadow-2xl"
-            onClick={(event) => event.stopPropagation()}
+            className="flex h-[85vh] w-full max-w-7xl overflow-hidden rounded-3xl bg-white shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex flex-col gap-4 border-b border-slate-100 px-6 py-5 md:flex-row md:items-center md:justify-between">
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-zinc-900 text-white">
-                  { detailLoading
-                    ? <Loader2 className="size-5 animate-spin" />
-                    : <TerminalSquare className="size-5" />}
-                </div>
-
-                <div className="min-w-0">
-                  <h2 className="truncate text-lg font-bold text-zinc-900">
-                    {selectedJob.job_name}
-                  </h2>
-                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs font-medium text-zinc-500">
-                    <span className="rounded-md bg-slate-100 px-2 py-0.5 font-mono">
-                      {selectedJob.job_id}
-                    </span>
-                    <span>{selectedJob.type ? selectedJob.type.toUpperCase() : "N/A"}</span>
-                    <span>Submitted {selectedJob.submitted}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <JobStatusBadge status={selectedJob.status} />
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedJob(null)}
-                  className="rounded-xl p-2 text-zinc-400 transition-all hover:bg-slate-100 hover:text-zinc-900"
-                >
-                  <X className="size-5" />
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 px-6 py-5 md:grid-cols-4">
-              {[
-                { label: "Nodes", value: selectedJob.nodes },
-                { label: "CPUs", value: selectedJob.cpus },
-                { label: "GPUs", value: selectedJob.gpus },
-                { label: "Memory", value: selectedJob.memory },
-                { label: "Runtime", value: selectedJob.runtime || "Queued" },
-                { label: "Submitted", value: selectedJob.submitted },
-                {
-                  label: "Completed",
-                  value: selectedJob.end ? selectedJob.end : "—",
-                },
-                {
-                  label: "Credits Used",
-                  value: `${formatCredits(selectedJob.credits)} credits`,
-                  highlight: true,
-                },
-              ].map((metric) => (
-                <div
-                  key={metric.label}
-                  className={`rounded-2xl border p-4 ${
-                    metric.highlight
-                      ? "border-amber-100 bg-amber-50/80"
-                      : "border-slate-100 bg-slate-50/80"
-                  }`}
-                >
-                  <div
-                    className={`text-xs font-semibold ${
-                      metric.highlight ? "text-amber-600" : "text-zinc-400"
-                    }`}
-                  >
-                    {metric.label}
-                  </div>
-                  <div
-                    className={`mt-1 text-sm font-bold ${
-                      metric.highlight ? "text-amber-800" : "text-zinc-800"
-                    }`}
-                  >
-                    {metric.value}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="border-t border-slate-100 px-6 py-5">
-              <h3 className="text-sm font-bold text-zinc-900">Job actions</h3>
-
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                      // TODO: wire up output preview endpoint
-                    }
+            {/* LEFT — job details */}
+            <div className="flex w-xl shrink-0 flex-col border-r border-slate-100">
+              {/* Header */}
+              <div className="flex items-start gap-3 border-b border-slate-100 px-5 py-5">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-zinc-900 text-white">
+                  {detailLoading
+                    ? <Loader2 className="size-4 animate-spin" />
+                    : <TerminalSquare className="size-4" />
                   }
-                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold text-zinc-600 transition-all hover:bg-slate-50 hover:text-zinc-900"
-                >
-                  <FileText className="size-4" />
-                  Preview output
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h2 className="truncate text-sm font-bold text-zinc-900">{selectedJob.job_name}</h2>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                    <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-zinc-500">{selectedJob.job_id}</span>
+                    <JobStatusBadge status={selectedJob.status} />
+                  </div>
+                </div>
+                <button type="button" onClick={closeModal}
+                  className="shrink-0 rounded-xl p-1.5 text-zinc-400 transition-all hover:bg-slate-100 hover:text-zinc-900">
+                  <X className="size-4" />
                 </button>
+              </div>
 
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold text-zinc-600 transition-all hover:bg-slate-50 hover:text-zinc-900"
-                >
-                  <Download className="size-4" />
-                  Download output
-                </button>
+              {/* Metrics — scrollable */}
+              <div className="flex-1 overflow-y-auto px-5 py-4">
+                <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-zinc-400">Resources</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { label: "Nodes", value: selectedJob.nodes || "—" },
+                    { label: "CPUs", value: selectedJob.cpus ?? "—" },
+                    { label: "GPUs", value: selectedJob.gpus ?? "—" },
+                    { label: "Mem Requested", value: selectedJob.memory_requested || "—" },
+                    { label: "Mem Used", value: selectedJob.memory_used || "—" },
+                    { label: "Runtime", value: selectedJob.runtime || "Queued" },
+                  ].map((m) => (
+                    <div key={m.label} className="rounded-xl border border-slate-100 bg-slate-50/80 p-3">
+                      <div className="text-[11px] font-semibold text-zinc-400">{m.label}</div>
+                      <div className="mt-0.5 truncate text-sm font-bold text-zinc-800">{m.value}</div>
+                    </div>
+                  ))}
+                </div>
 
-                {selectedJob.status === "Completed" ? (
+                <p className="mb-3 mt-5 text-[11px] font-bold uppercase tracking-widest text-zinc-400">Timing</p>
+                <div className="flex flex-col gap-2">
+                  {[
+                    { label: "Submitted", value: selectedJob.submitted ?? "—" },
+                    { label: "Completed", value: selectedJob.end ?? "—" },
+                    { label: "Exit Code", value: selectedJob.exit_code || "—" },
+                  ].map((m) => (
+                    <div key={m.label} className="rounded-xl border border-slate-100 bg-slate-50/80 p-3">
+                      <div className="text-[11px] font-semibold text-zinc-400">{m.label}</div>
+                      <div className="mt-0.5 text-sm font-bold text-zinc-800">{m.value}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <p className="mb-3 mt-5 text-[11px] font-bold uppercase tracking-widest text-zinc-400">Billing</p>
+                <div className="rounded-xl border border-amber-100 bg-amber-50/80 p-3">
+                  <div className="text-[11px] font-semibold text-amber-600">Credits Used</div>
+                  <div className="mt-0.5 text-sm font-bold text-amber-800">
+                    {formatCredits(selectedJob.credits)} credits
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* RIGHT — output panel */}
+            <div className="flex min-w-0 flex-1 flex-col bg-zinc-950">
+              {/* Tab bar */}
+              <div className="flex shrink-0 items-center gap-1 border-b border-zinc-800 px-4 py-3">
+                {outputTabs.map((tab) => (
                   <button
+                    key={tab.value}
                     type="button"
-                    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold text-zinc-600 transition-all hover:bg-slate-50 hover:text-zinc-900"
+                    onClick={() => setActiveOutputTab(tab.value)}
+                    className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${activeOutputTab === tab.value
+                      ? "bg-zinc-700 text-white"
+                      : "text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"
+                      }`}
                   >
+                    {tab.icon}
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Content */}
+              <div className="min-h-0 flex-1 overflow-auto p-5">
+                {detailLoading ? (
+                  <div className="flex h-full items-center justify-center gap-2 text-sm font-semibold text-zinc-500">
+                    <Loader2 className="size-4 animate-spin" />
+                    Loading…
+                  </div>
+                ) : (
+                  outputLoading
+                    ? (<div className="flex h-full items-center justify-center gap-2 text-sm text-zinc-500">
+                      <Loader2 className="size-4 animate-spin" /> Loading…
+                    </div>)
+                    : (
+                      <pre className="font-mono text-xs text-zinc-100">
+                        {activeOutputTab === "script"
+                          ? "# TODO: sbatch script from MongoDB"
+                          : outputContent.split("\n").map((line, i) => (
+                            <div key={i} className="flex leading-5 hover:bg-zinc-800/50">
+                              <span className="w-10 shrink-0 select-none pr-4 text-right text-zinc-600">
+                                {i + 1}
+                              </span>
+                              <span className="whitespace-pre-wrap break-words">{line}</span>
+                            </div>
+                          )) || "No content available."
+                        }
+                      </pre>)
+                )}
+              </div>
+
+              {/* Bottom actions */}
+              <div className="flex shrink-0 items-center justify-end gap-2 border-t border-zinc-800 px-4 py-3">
+                {!isActiveJob(selectedJob) && (
+                  <button type="button"
+                    className="inline-flex items-center gap-2 rounded-xl border border-zinc-700 px-4 py-2 text-sm font-bold text-zinc-300 transition-all hover:bg-zinc-800 hover:text-white"
+                    onClick={() =>
+                      activeOutputTab === "error"
+                        ? jobsApi.downloadError(selectedJob.job_id)
+                        : jobsApi.downloadOutput(selectedJob.job_id)
+                    }
+                  >
+                    <Download className="size-4" />
+                    Download output
+                  </button>
+                )}
+                {selectedJob.status === "Completed" && (
+                  <button type="button"
+                    className="inline-flex items-center gap-2 rounded-xl border border-zinc-700 px-4 py-2 text-sm font-bold text-zinc-300 transition-all hover:bg-zinc-800 hover:text-white">
                     <RotateCcw className="size-4" />
                     Resubmit job
                   </button>
-                ) : null}
-
-                {isActiveJob(selectedJob) ? (
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-2 rounded-xl border border-red-100 bg-red-50 px-4 py-2 text-sm font-bold text-red-600 transition-all hover:bg-red-100"
-                  >
+                )}
+                {isActiveJob(selectedJob) && (
+                  <button type="button"
+                    className="inline-flex items-center gap-2 rounded-xl border border-red-800 bg-red-950 px-4 py-2 text-sm font-bold text-red-400 transition-all hover:bg-red-900 hover:text-red-300">
                     <X className="size-4" />
                     Cancel job
                   </button>
-                ) : null}
+                )}
               </div>
             </div>
           </div>
         </div>
-      ) : null}
+      )}
     </div>
   )
 }
