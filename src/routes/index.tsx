@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router"
 import {
   Coins,
   Cpu,
+  Loader2,
   Download,
   FileText,
   RotateCcw,
@@ -10,125 +11,12 @@ import {
   TerminalSquare,
   X,
 } from "lucide-react"
-import { useMemo, useState } from "react"
+import { useMemo, useState, useCallback, useEffect } from "react"
+import { type Job, type JobStatus, type JobStatusFilter, jobsApi } from "@/lib/jobs"
 
 export const Route = createFileRoute("/")({
   component: DashboardPage,
 })
-
-type JobStatus = "running" | "pending" | "completed" | "failed" | "cancelled"
-type JobType = "mpi" | "gpu" | "pytorch" | "tensorflow" | "spark"
-
-type Job = {
-  id: string
-  name: string
-  type: JobType
-  status: JobStatus
-  submittedAt: Date
-  completedAt?: Date
-  runtime?: string
-  nodes: number
-  cpus: number
-  gpus: number
-  memory: string
-  creditUsed: number
-  outputPreview: string
-}
-
-const mockJobs: Job[] = [
-  {
-    id: "JOB-1042",
-    name: "protein-folding-gpu-test",
-    type: "gpu",
-    status: "running",
-    submittedAt: new Date(Date.now() - 1000 * 60 * 42),
-    runtime: "42m 18s",
-    nodes: 1,
-    cpus: 8,
-    gpus: 1,
-    memory: "32 GB",
-    creditUsed: 180,
-    outputPreview:
-      "[INFO] Job JOB-1042 started\n[INFO] Loading CUDA environment\n[INFO] Allocated 1 GPU and 8 CPU cores\n[INFO] Running protein folding workload\n[INFO] Current progress: 64%\n[INFO] Output file will be available after completion",
-  },
-  {
-    id: "JOB-1041",
-    name: "mpi-matrix-benchmark",
-    type: "mpi",
-    status: "running",
-    submittedAt: new Date(Date.now() - 1000 * 60 * 76),
-    runtime: "1h 16m",
-    nodes: 3,
-    cpus: 24,
-    gpus: 0,
-    memory: "48 GB",
-    creditUsed: 240,
-    outputPreview:
-      "[INFO] MPI job started\n[INFO] Nodes allocated: worker-01, worker-02, worker-03\n[INFO] Matrix benchmark running\n[INFO] Current iteration: 18 / 30\n[INFO] No errors detected",
-  },
-  {
-    id: "JOB-1040",
-    name: "spark-event-pipeline",
-    type: "spark",
-    status: "pending",
-    submittedAt: new Date(Date.now() - 1000 * 60 * 11),
-    nodes: 2,
-    cpus: 16,
-    gpus: 0,
-    memory: "24 GB",
-    creditUsed: 0,
-    outputPreview:
-      "[PENDING] Job is waiting in the queue\n[INFO] Output preview will be available once the job starts",
-  },
-  {
-    id: "JOB-1039",
-    name: "pytorch-cuda-validation",
-    type: "pytorch",
-    status: "completed",
-    submittedAt: new Date(Date.now() - 1000 * 60 * 60 * 4),
-    completedAt: new Date(Date.now() - 1000 * 60 * 60 * 2),
-    runtime: "2h 02m",
-    nodes: 1,
-    cpus: 8,
-    gpus: 1,
-    memory: "32 GB",
-    creditUsed: 360,
-    outputPreview:
-      "[INFO] PyTorch CUDA validation started\n[INFO] CUDA device detected\n[INFO] Training smoke test completed\n[RESULT] Validation accuracy: 97.8%\n[INFO] Job completed successfully",
-  },
-  {
-    id: "JOB-1038",
-    name: "tensorflow-smoke-test",
-    type: "tensorflow",
-    status: "failed",
-    submittedAt: new Date(Date.now() - 1000 * 60 * 60 * 7),
-    completedAt: new Date(Date.now() - 1000 * 60 * 60 * 6),
-    runtime: "48m 09s",
-    nodes: 1,
-    cpus: 6,
-    gpus: 1,
-    memory: "24 GB",
-    creditUsed: 130,
-    outputPreview:
-      "[INFO] TensorFlow smoke test started\n[INFO] Loading GPU environment\n[ERROR] Dependency mismatch detected\n[ERROR] Job failed before validation stage\n[INFO] Partial credits may be reviewed based on cancellation/refund policy",
-  },
-  {
-    id: "JOB-1037",
-    name: "openmpi-latency-check",
-    type: "mpi",
-    status: "cancelled",
-    submittedAt: new Date(Date.now() - 1000 * 60 * 60 * 12),
-    completedAt: new Date(Date.now() - 1000 * 60 * 60 * 11),
-    runtime: "31m 44s",
-    nodes: 2,
-    cpus: 12,
-    gpus: 0,
-    memory: "16 GB",
-    creditUsed: 70,
-    outputPreview:
-      "[INFO] OpenMPI latency check started\n[INFO] Nodes allocated: worker-01, worker-02\n[WARN] Job cancellation requested by user\n[INFO] Job cancelled\n[INFO] Partial refund may be applied based on runtime used",
-  },
-]
 
 const statusTabs = [
   { label: "All", value: "all" },
@@ -170,34 +58,14 @@ function getStatusDot(status: string) {
   return "bg-slate-400"
 }
 
-function formatDate(date: Date) {
-  return new Intl.DateTimeFormat("en-MY", {
-    month: "short",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date)
-}
-
-function formatTimeAgo(date: Date) {
-  const diffMs = Date.now() - date.getTime()
-  const diffMinutes = Math.max(1, Math.floor(diffMs / 60000))
-
-  if (diffMinutes < 60) return `${diffMinutes}m ago`
-
-  const diffHours = Math.floor(diffMinutes / 60)
-  if (diffHours < 24) return `${diffHours}h ago`
-
-  const diffDays = Math.floor(diffHours / 24)
-  return `${diffDays}d ago`
-}
-
-function formatCredits(value: number) {
+function formatCredits(value: number | null) {
+  if (value === null)
+    return "N/A"
   return new Intl.NumberFormat("en-MY").format(value)
 }
 
 function isActiveJob(job: Job) {
-  return job.status === "running" || job.status === "pending"
+  return job.status === "Running" || job.status === "Pending"
 }
 
 function JobStatusBadge({ status }: { status: JobStatus }) {
@@ -214,26 +82,57 @@ function JobStatusBadge({ status }: { status: JobStatus }) {
 }
 
 function DashboardPage() {
+  const [jobs, setJobs] = useState<Job[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+ 
   const [searchQuery, setSearchQuery] = useState("")
-  const [statusFilter, setStatusFilter] = useState<string>("all")
-  const [typeFilter, setTypeFilter] = useState<string>("all")
+  const [statusFilter, setStatusFilter] = useState("all")
+  const [typeFilter, setTypeFilter] = useState("all")
+ 
   const [selectedJob, setSelectedJob] = useState<Job | null>(null)
-  const [previewJob, setPreviewJob] = useState<Job | null>(null)
+  const [detailLoading, setDetailLoading] = useState(false)
+
+  const loadJobs = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const data = await jobsApi.listJobs(statusFilter as JobStatusFilter, 7)
+      setJobs(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error")
+    } finally {
+      setLoading(false)
+    }
+  }, [statusFilter])
+
+  useEffect(() => {
+    loadJobs()
+  }, [loadJobs])
 
   const filteredJobs = useMemo(() => {
-    return mockJobs
-      .filter(
-        (job) =>
-          job.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          job.id.toLowerCase().includes(searchQuery.toLowerCase()),
-      )
+    return jobs
       .filter((job) => {
-        if (statusFilter === "all") return true
-        if (statusFilter === "active") return isActiveJob(job)
-        return job.status === statusFilter
+        const q = searchQuery.toLowerCase()
+        return (
+          job.job_name.toLowerCase().includes(q) ||
+          job.job_id.toLowerCase().includes(q)
+        )
       })
       .filter((job) => typeFilter === "all" || job.type === typeFilter)
-  }, [searchQuery, statusFilter, typeFilter])
+  }, [jobs, searchQuery, typeFilter])
+
+  async function openJobDetail(job: Job) {
+    setSelectedJob(job)           // show modal immediately with list data
+    setDetailLoading(true)
+    try {
+      const full = await jobsApi.getJob(job.job_id)
+      setSelectedJob(full)        // upgrade with full data when ready
+    } catch {
+    } finally {
+      setDetailLoading(false)
+    }
+  }
 
   return (
     <div className="box-border h-full overflow-hidden p-6 lg:p-10">
@@ -276,11 +175,11 @@ function DashboardPage() {
                       className="bg-transparent text-sm font-semibold text-zinc-600 outline-none"
                     >
                       <option value="all">All types</option>
-                      <option value="mpi">MPI</option>
-                      <option value="gpu">GPU</option>
-                      <option value="pytorch">PyTorch</option>
-                      <option value="tensorflow">TensorFlow</option>
-                      <option value="spark">Spark</option>
+                      <option value="MPI">MPI</option>
+                      <option value="GPU">GPU</option>
+                      <option value="PYTORCH">PyTorch</option>
+                      <option value="TENSORFLOW">TensorFlow</option>
+                      <option value="SPARK">Spark</option>
                     </select>
                   </div>
                 </div>
@@ -324,7 +223,25 @@ function DashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredJobs.length === 0 ? (
+                {loading ? (
+                  <tr>
+                    <td colSpan={8} className="px-5 py-12 text-center">
+                      <div className="flex items-center justify-center gap-2 text-sm font-semibold text-zinc-400">
+                        <Loader2 className="size-4 animate-spin" />
+                        Loading jobs…
+                      </div>
+                    </td>
+                  </tr>
+                ) : error ? (
+                  <tr>
+                    <td colSpan={8} className="px-5 py-12 text-center">
+                      <p className="text-sm font-semibold text-red-500">{error}</p>
+                      <button onClick={loadJobs} className="mt-3 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-bold text-zinc-600 hover:bg-slate-50">
+                        <RotateCcw className="size-3.5" /> Retry
+                      </button>
+                    </td>
+                  </tr>
+                ) : filteredJobs.length === 0 ? (
                   <tr>
                     <td
                       colSpan={8}
@@ -336,18 +253,18 @@ function DashboardPage() {
                 ) : (
                   filteredJobs.map((job, index) => (
                     <tr
-                      key={job.id}
-                      onClick={() => setSelectedJob(job)}
+                      key={job.job_id}
+                      onClick={() => openJobDetail(job)}
                       className={`cursor-pointer border-b border-slate-100 text-sm transition-colors hover:bg-amber-50/50 ${
                         index % 2 === 0 ? "bg-white/70" : "bg-slate-50/70"
                       }`}
                     >
                       <td className="whitespace-nowrap px-5 py-3 font-bold text-zinc-800">
-                        {job.name}
+                        {job.job_name}
                       </td>
                       <td className="whitespace-nowrap px-5 py-3">
                         <span className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs font-semibold text-zinc-500">
-                          {job.id}
+                          {job.job_id}
                         </span>
                       </td>
                       <td className="whitespace-nowrap px-5 py-3 text-xs font-bold uppercase tracking-wide text-zinc-500">
@@ -357,15 +274,15 @@ function DashboardPage() {
                         <JobStatusBadge status={job.status} />
                       </td>
                       <td className="whitespace-nowrap px-5 py-3 text-xs font-medium text-zinc-500">
-                        {formatDate(job.submittedAt)}
+                        {job.submitted}
                       </td>
                       <td className="whitespace-nowrap px-5 py-3 text-xs font-medium text-zinc-500">
-                        {job.runtime || (job.status === "pending" ? "Queued" : "—")}
+                        {job.runtime || (job.status === "Pending" ? "Queued" : "—")}
                       </td>
                       <td className="whitespace-nowrap px-5 py-3 text-right text-xs font-bold text-amber-700">
                         <span className="inline-flex items-center justify-end gap-1.5 rounded-lg bg-amber-50 px-2 py-1">
                           <Coins className="size-3.5" />
-                          {formatCredits(job.creditUsed)}
+                          { formatCredits(job.credits) }
                         </span>
                       </td>
                       <td className="whitespace-nowrap px-5 py-3">
@@ -375,7 +292,7 @@ function DashboardPage() {
                             title="Preview output"
                             onClick={(event) => {
                               event.stopPropagation()
-                              setPreviewJob(job)
+                              // TODO: wire up output preview endpoint
                             }}
                             className="rounded-lg p-1.5 text-zinc-400 transition-all hover:bg-slate-100 hover:text-zinc-900"
                           >
@@ -393,7 +310,7 @@ function DashboardPage() {
                             </button>
                           ) : null}
 
-                          {job.status === "completed" ? (
+                          {job.status === "Completed" ? (
                             <button
                               type="button"
                               title="Resubmit"
@@ -425,7 +342,7 @@ function DashboardPage() {
 
           <div className="flex shrink-0 flex-col gap-3 border-t border-slate-100 px-5 py-3 text-xs font-semibold text-zinc-500 sm:flex-row sm:items-center sm:justify-between">
             <span>{filteredJobs.length} jobs shown</span>
-            <span>{mockJobs.length} records total</span>
+            <span>{jobs.length} records total</span>
           </div>
         </div>
       </div>
@@ -442,19 +359,21 @@ function DashboardPage() {
             <div className="flex flex-col gap-4 border-b border-slate-100 px-6 py-5 md:flex-row md:items-center md:justify-between">
               <div className="flex min-w-0 items-center gap-3">
                 <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-zinc-900 text-white">
-                  <TerminalSquare className="size-5" />
+                  { detailLoading
+                    ? <Loader2 className="size-5 animate-spin" />
+                    : <TerminalSquare className="size-5" />}
                 </div>
 
                 <div className="min-w-0">
                   <h2 className="truncate text-lg font-bold text-zinc-900">
-                    {selectedJob.name}
+                    {selectedJob.job_name}
                   </h2>
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-xs font-medium text-zinc-500">
                     <span className="rounded-md bg-slate-100 px-2 py-0.5 font-mono">
-                      {selectedJob.id}
+                      {selectedJob.job_id}
                     </span>
                     <span>{selectedJob.type.toUpperCase()}</span>
-                    <span>Submitted {formatTimeAgo(selectedJob.submittedAt)}</span>
+                    <span>Submitted {selectedJob.submitted}</span>
                   </div>
                 </div>
               </div>
@@ -479,14 +398,14 @@ function DashboardPage() {
                 { label: "GPUs", value: selectedJob.gpus },
                 { label: "Memory", value: selectedJob.memory },
                 { label: "Runtime", value: selectedJob.runtime || "Queued" },
-                { label: "Submitted", value: formatDate(selectedJob.submittedAt) },
+                { label: "Submitted", value: selectedJob.submitted },
                 {
                   label: "Completed",
-                  value: selectedJob.completedAt ? formatDate(selectedJob.completedAt) : "—",
+                  value: selectedJob.end ? selectedJob.end : "—",
                 },
                 {
                   label: "Credits Used",
-                  value: `${formatCredits(selectedJob.creditUsed)} credits`,
+                  value: `${formatCredits(selectedJob.credits)} credits`,
                   highlight: true,
                 },
               ].map((metric) => (
@@ -522,7 +441,11 @@ function DashboardPage() {
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
                   type="button"
-                  onClick={() => setPreviewJob(selectedJob)}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                      // TODO: wire up output preview endpoint
+                    }
+                  }
                   className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold text-zinc-600 transition-all hover:bg-slate-50 hover:text-zinc-900"
                 >
                   <FileText className="size-4" />
@@ -537,7 +460,7 @@ function DashboardPage() {
                   Download output
                 </button>
 
-                {selectedJob.status === "completed" ? (
+                {selectedJob.status === "Completed" ? (
                   <button
                     type="button"
                     className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold text-zinc-600 transition-all hover:bg-slate-50 hover:text-zinc-900"
@@ -557,51 +480,6 @@ function DashboardPage() {
                   </button>
                 ) : null}
               </div>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {previewJob ? (
-        <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 p-6 backdrop-blur-sm"
-          onClick={() => setPreviewJob(null)}
-        >
-          <div
-            className="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
-              <div>
-                <h2 className="text-lg font-bold text-zinc-900">Output Preview</h2>
-                <p className="mt-1 text-sm text-zinc-500">
-                  {previewJob.name} · {previewJob.id}
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setPreviewJob(null)}
-                className="rounded-xl p-2 text-zinc-400 transition-all hover:bg-slate-100 hover:text-zinc-900"
-              >
-                <X className="size-5" />
-              </button>
-            </div>
-
-            <div className="min-h-0 flex-1 overflow-auto bg-zinc-950 p-5">
-              <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-6 text-zinc-100">
-                {previewJob.outputPreview}
-              </pre>
-            </div>
-
-            <div className="flex justify-end border-t border-slate-100 px-6 py-4">
-              <button
-                type="button"
-                className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2 text-sm font-bold text-white transition-all hover:bg-zinc-800"
-              >
-                <Download className="size-4" />
-                Download output
-              </button>
             </div>
           </div>
         </div>
