@@ -99,7 +99,6 @@ function DashboardPage() {
 
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
-  const [typeFilter, setTypeFilter] = useState("all")
 
   const [selectedJob, setSelectedJob] = useState<Job | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
@@ -151,8 +150,7 @@ function DashboardPage() {
           job.job_id.toLowerCase().includes(q)
         )
       })
-      .filter((job) => typeFilter === "all" || job.type === typeFilter)
-  }, [jobs, searchQuery, typeFilter])
+  }, [jobs, searchQuery])
 
   async function openJobDetail(job: Job) {
     setSelectedJob(job)           // show modal immediately with list data
@@ -202,24 +200,6 @@ function DashboardPage() {
                     placeholder="Search jobs..."
                     className="h-10 w-full rounded-xl border border-slate-200 bg-white/70 pl-9 pr-3 text-sm font-medium text-zinc-900 outline-none transition-all placeholder:text-zinc-400 focus:border-amber-400 sm:w-56"
                   />
-                </div>
-
-                <div className="flex gap-2">
-                  <div className="flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white/70 px-3 text-zinc-400">
-                    <SlidersHorizontal className="size-4" />
-                    <select
-                      value={typeFilter}
-                      onChange={(event) => setTypeFilter(event.target.value)}
-                      className="bg-transparent text-sm font-semibold text-zinc-600 outline-none"
-                    >
-                      <option value="all">All types</option>
-                      <option value="MPI">MPI</option>
-                      <option value="GPU">GPU</option>
-                      <option value="PYTORCH">PyTorch</option>
-                      <option value="TENSORFLOW">TensorFlow</option>
-                      <option value="SPARK">Spark</option>
-                    </select>
-                  </div>
                 </div>
               </div>
             </div>
