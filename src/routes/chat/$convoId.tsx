@@ -121,9 +121,10 @@ const MessageBubble = memo(
               components={{
                 code({ className, children }) {
                   const match = /language-(\w+)/.exec(className || '')
-                  const isInline = !String(children).includes('\n')
-                  return !isInline && match ? (
-                    <SyntaxHighlighter language={match[1]}>
+                  const isBlock = match || String(children).includes('\n')
+                  console.log(children, isBlock)
+                  return isBlock ? (
+                    <SyntaxHighlighter language={match?.[1] ?? 'text'}>
                       {String(children).replace(/\n$/, '')}
                     </SyntaxHighlighter>
                   ) : (

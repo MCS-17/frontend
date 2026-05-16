@@ -30,3 +30,18 @@
 .prose-invert code {
   color: black;
 }
+
+.chat-prose code::before,
+.chat-prose code::after {
+  content: none !important;
+}
+
+.chat-prose :not(pre) > code {
+  background-color: rgb(254 243 199) !important;
+  color: rgb(146 64 14) !important;
+  padding: 0.15rem 0.35rem !important;
+  border-radius: 0.25rem !important;
+  font-size: 0.8em !important;
+  font-weight: 500 !important;
+  border: 1px solid rgb(253 230 138) !important;
+}
