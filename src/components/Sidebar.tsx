@@ -225,6 +225,16 @@ export function Sidebar() {
   const [isMobileOpen, setIsMobileOpen] = useState(false)
   const [authUser, setAuthUser] = useState<AuthUser | null>(() => getStoredUser())
 
+  const [isDesktop, setIsDesktop] = useState(
+    typeof window !== "undefined" ? window.innerWidth >= 1024 : true
+  )
+
+  useEffect(() => {
+    const handleResize = () => setIsDesktop(window.innerWidth >= 1024)
+    window.addEventListener("resize", handleResize)
+    return () => window.removeEventListener("resize", handleResize)
+  }, [])
+
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -324,11 +334,7 @@ export function Sidebar() {
         initial={false}
         animate={{
           width: isCollapsed ? 64 : 240,
-          x:
-            isMobileOpen ||
-            (typeof window !== "undefined" && window.innerWidth >= 1024)
-              ? 0
-              : -240,
+          x: isMobileOpen || isDesktop ? 0 : -240,
         }}
         className="
           fixed lg:relative inset-y-0 left-0 z-[70]

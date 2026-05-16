@@ -366,11 +366,11 @@ function DashboardPage() {
           onClick={closeModal}
         >
           <div
-            className="flex h-[85vh] w-full max-w-7xl overflow-hidden rounded-3xl bg-white shadow-2xl"
+            className="flex flex-col lg:grid lg:grid-cols-5 h-[90vh] w-full max-w-7xl overflow-hidden rounded-3xl bg-white shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             {/* LEFT — job details */}
-            <div className="flex w-xl shrink-0 flex-col border-r border-slate-100">
+            <div className="lg:col-span-2 flex shrink-0 flex-col border-b lg:border-b-0 lg:border-r border-slate-100 max-h-[40vh] lg:max-h-none overflow-y-auto lg:overflow-visible">
               {/* Header */}
               <div className="flex items-start gap-3 border-b border-slate-100 px-5 py-5">
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-zinc-900 text-white">
@@ -436,7 +436,7 @@ function DashboardPage() {
             </div>
 
             {/* RIGHT — output panel */}
-            <div className="flex min-w-0 flex-1 flex-col bg-zinc-950">
+            <div className="lg:col-span-3 flex min-w-0 flex-1 flex-col bg-zinc-950">
               {/* Tab bar */}
               <div className="flex shrink-0 items-center gap-1 border-b border-zinc-800 px-4 py-3">
                 {outputTabs.map((tab) => (
@@ -488,7 +488,7 @@ function DashboardPage() {
               <div className="flex shrink-0 items-center justify-end gap-2 border-t border-zinc-800 px-4 py-3">
                 {!isActiveJob(selectedJob) && (
                   <button type="button"
-                    className="inline-flex items-center gap-2 rounded-xl border border-zinc-700 px-4 py-2 text-sm font-bold text-zinc-300 transition-all hover:bg-zinc-800 hover:text-white"
+                    className="inline-flex items-center gap-2 rounded-xl border border-zinc-700 px-4 py-2 text-sm font-bold text-zinc-300 transition-all hover:bg-zinc-800 hover:text-white cursor-pointer"
                     onClick={() =>
                       activeOutputTab === "error"
                         ? jobsApi.downloadError(selectedJob.job_id)
