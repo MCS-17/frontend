@@ -12,6 +12,47 @@ import ReactMarkdown from 'react-markdown'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
+import remarkGfm from 'remark-gfm'
+import { useVirtualizer } from '@tanstack/react-virtual'
+import { memo, useMemo } from 'react'
+import remarkGithubAdmonitionsToDirectives from "remark-github-admonitions-to-directives"
+import remarkDirective from 'remark-directive'
+import { visit } from 'unist-util-visit'
+
+/*
+remarkGithubAdmonitionsToDirectives converts [!NOTE] blockquotes into directive nodes in the remark AST
+remarkDirective teaches the parser to understand directive syntax
+since directive nodes are not standard html, rehype doesnt know what are these and just drop them
+
+So we need to tell rehype to convert the containerDirective into a div
+*/
+const remarkDirectiveRenderer = () => (tree: any) => {
+  visit(tree, (node) => {
+    if (node.type === 'containerDirective') {
+      const type = node.name?.toUpperCase()
+      const styles: Record<string, string> = {
+        note: 'border-blue-400 bg-blue-50 text-blue-800',
+        tip: 'border-green-400 bg-green-50 text-green-800',
+        warning: 'border-yellow-400 bg-yellow-50 text-yellow-800',
+        info: 'border-purple-400 bg-purple-50 text-purple-800',
+        danger: 'border-red-400 bg-red-50 text-red-800',
+      }
+      node.data = {
+        hName: 'div',
+        hProperties: {
+          className: `admonition admonition-${node.name} border-l-4 px-3 py-2 rounded-r-lg text-sm my-2 ${styles[node.name] ?? ''}`,
+          'data-type': type,
+        },
+      }
+    }
+  })
+}
+
+const normalizeLatex = (content: string) =>
+  content
+    .replace(/(?<!\n)\$\$/g, '\n$$$$')
+    .replace(/\$\$(?!\n)/g, '$$$$\n')
+    .trim()
 
 export const Route = createFileRoute('/chat/$convoId')({
   component: ConversationPage,
@@ -37,45 +78,45 @@ const getFileIcon = (fileName: string) => {
   }
 }
 
-function MessageBubble({ dialogue, animate }: { dialogue: Dialogue; animate?: boolean }) {
-  const isUser = dialogue.sent_by === 'user'
-  const hasFiles = isUser && dialogue.files && dialogue.files.length > 0
+const MessageBubble = memo(
+  function MessageBubble({ dialogue, animate }: { dialogue: Dialogue; animate?: boolean }) {
+    const isUser = dialogue.sent_by === 'user'
+    const hasFiles = isUser && dialogue.files && dialogue.files.length > 0
+    const content = useMemo(() => normalizeLatex(dialogue.content), [dialogue.content])
 
-  const bubble = (
-    <div className={`flex items-end gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
-      {/* Avatar */}
-      <div className={`shrink-0 flex items-center justify-center size-8 rounded-full border ${
-        isUser
+    const bubble = (
+      <div className={`flex items-end gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
+        {/* Avatar */}
+        <div className={`shrink-0 flex items-center justify-center size-8 rounded-full border ${isUser
           ? 'bg-amber-400 border-amber-500 text-black'
           : 'bg-white border-gray-200 text-gray-600'
-      }`}>
-        {isUser ? <User className="size-4" /> : <Bot className="size-4" />}
-      </div>
+          }`}>
+          {isUser ? <User className="size-4" /> : <Bot className="size-4" />}
+        </div>
 
-      <div className={`flex flex-col gap-1.5 max-w-[70%] ${isUser ? 'items-end' : 'items-start'}`}>
-        {/* File chips */}
-        {hasFiles && (
-          <div className="flex flex-wrap gap-1.5 justify-end">
-            {dialogue.files!.map((f, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-1.5 bg-amber-100 border border-amber-300 px-2.5 py-1 rounded-xl text-xs text-amber-800 font-medium"
-              >
-                {getFileIcon(f.name)}
-                <span className="max-w-[140px] truncate">{f.name}</span>
-              </div>
-            ))}
-          </div>
-        )}
+        <div className={`flex flex-col gap-1.5 max-w-[70%] ${isUser ? 'items-end' : 'items-start'}`}>
+          {/* File chips */}
+          {hasFiles && (
+            <div className="flex flex-wrap gap-1.5 justify-end">
+              {dialogue.files!.map((f, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-1.5 bg-amber-100 border border-amber-300 px-2.5 py-1 rounded-xl text-xs text-amber-800 font-medium"
+                >
+                  {getFileIcon(f.name)}
+                  <span className="max-w-[140px] truncate">{f.name}</span>
+                </div>
+              ))}
+            </div>
+          )}
 
-        {/* Bubble */}
-        <div className={`prose prose-sm max-w-none chat-prose px-4 py-2.5 rounded-2xl text-sm ${
-          isUser
+          {/* Bubble */}
+          <div className={`prose prose-sm max-w-none chat-prose px-4 py-2.5 rounded-2xl text-sm ${isUser
             ? 'bg-amber-400 text-black rounded-br-sm'
             : 'bg-white border border-gray-200 text-gray-800 rounded-bl-sm shadow-sm'
-        }`}>
+            }`}>
             <ReactMarkdown
-              remarkPlugins={[remarkMath]}
+              remarkPlugins={[remarkGithubAdmonitionsToDirectives, remarkDirective, remarkDirectiveRenderer, remarkMath, remarkGfm]}
               rehypePlugins={[[rehypeKatex, { throwOnError: false }]]}
               components={{
                 code({ className, children }) {
@@ -91,25 +132,26 @@ function MessageBubble({ dialogue, animate }: { dialogue: Dialogue; animate?: bo
                 }
               }}
             >
-              {dialogue.content}
+              {content}
             </ReactMarkdown>
+          </div>
         </div>
       </div>
-    </div>
-  )
+    )
 
-  if (!animate) return bubble
+    if (!animate) return bubble
 
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25, ease: 'easeOut' }}
-    >
-      {bubble}
-    </motion.div>
-  )
-}
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25, ease: 'easeOut' }}
+      >
+        {bubble}
+      </motion.div>
+    )
+  }
+)
 
 function TypingIndicator() {
   return (
@@ -147,7 +189,7 @@ function ConversationPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const bottomRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['conversation', convoId],
@@ -155,9 +197,9 @@ function ConversationPage() {
   })
 
   const sendMutation = useMutation({
-    
-  mutationFn: (payload: { message: string; files: File[] }) =>
-    chatApi.continueConversation(convoId, payload.message, payload.files),
+
+    mutationFn: (payload: { message: string; files: File[] }) =>
+      chatApi.continueConversation(convoId, payload.message, payload.files),
     onMutate: (payload) => {
       const userMsg: Dialogue = {
         _id: `pending-${Date.now()}`,
@@ -192,10 +234,21 @@ function ConversationPage() {
   const title = data?.conversation?.title ?? 'Conversation'
   const allMessages = [...dialogues, ...pendingMessages]
 
+  const totalItems = allMessages.length + (sendMutation.isPending ? 1 : 0)
+
+  const virtualizer = useVirtualizer({
+    count: totalItems,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 100,
+    overscan: 5,
+  })
+
   // Scroll to bottom on new messages or typing indicator
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [allMessages.length, sendMutation.isPending])
+    if (totalItems > 0) {
+      virtualizer.scrollToIndex(totalItems - 1, { behavior: 'smooth' })
+    }
+  }, [totalItems])
 
   const canSend = message.trim().length > 0 && !sendMutation.isPending
 
@@ -252,29 +305,45 @@ function ConversationPage() {
       </div>
 
       {/* Messages */}
-      <div className='flex-1 w-full overflow-y-auto items-center flex flex-col'>
-        <div className="flex-1 w-full max-w-3xl px-4 py-4 flex flex-col gap-4">
+      <div ref={scrollRef} className='flex-1 w-full overflow-y-auto'>
+        <div
+          className="relative w-full max-w-3xl px-4 py-4 mx-auto"
+          style={{ height: `${virtualizer.getTotalSize()}px` }}
+        >
           {isLoading && (
             <div className="flex justify-center pt-12 text-gray-400 text-sm">Loading...</div>
           )}
-
           {isError && (
             <div className="flex justify-center pt-12 text-red-400 text-sm">
               Failed to load conversation.
             </div>
           )}
-
-          {!isLoading && allMessages.map((d, i) => (
-            <MessageBubble
-              key={d._id}
-              dialogue={d}
-              animate={pendingMessages.some(p => p._id === d._id)}
-            />
-          ))}
-
-          {sendMutation.isPending && <TypingIndicator />}
-
-          <div ref={bottomRef} />
+          {virtualizer.getVirtualItems().map((virtualItem: any) => {
+            const isTyping = virtualItem.index === allMessages.length
+            return (
+              <div
+                key={virtualItem.key}
+                ref={virtualizer.measureElement}
+                data-index={virtualItem.index}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  width: '100%',
+                  transform: `translateY(${virtualItem.start}px)`,
+                }}
+                className="pb-4"
+              >
+                {isTyping ? (
+                  <TypingIndicator />
+                ) : (
+                  <MessageBubble
+                    dialogue={allMessages[virtualItem.index]}
+                    animate={pendingMessages.some(p => p._id === allMessages[virtualItem.index]._id)}
+                  />
+                )}
+              </div>
+            )
+          })}
         </div>
       </div>
 
@@ -304,9 +373,8 @@ function ConversationPage() {
             onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
             onDragLeave={() => setIsDragging(false)}
             onDrop={(e) => { e.preventDefault(); setIsDragging(false); addFiles(e.dataTransfer.files) }}
-            className={`flex flex-col flex-1 h-auto bg-white/80 backdrop-blur-md border-2 rounded-3xl text-black text-md shadow-sm transition-all duration-200 ${
-              isDragging ? 'border-amber-500 bg-amber-50/30' : 'border-amber-400'
-            }`}
+            className={`flex flex-col flex-1 h-auto bg-white/80 backdrop-blur-md border-2 rounded-3xl text-black text-md shadow-sm transition-all duration-200 ${isDragging ? 'border-amber-500 bg-amber-50/30' : 'border-amber-400'
+              }`}
           >
             {/* Staged files */}
             <div className="flex flex-wrap gap-2 px-4 pt-3 empty:pt-0">
@@ -342,16 +410,16 @@ function ConversationPage() {
 
             <div className="flex flex-row items-start px-3 py-2">
               <div className='flex shrink-0 items-center justify-center pt-0.5'>
-                <FolderPlus 
-                  onClick={handleFileClick} 
+                <FolderPlus
+                  onClick={handleFileClick}
                   className='p-2 size-9 text-gray-500 rounded-full hover:scale-105 hover:bg-gray-100 hover:text-gray-800 transition-all cursor-pointer'
                 />
-                <input 
-                  type="file" 
-                  multiple 
-                  ref={fileInputRef} 
-                  onChange={handleFileChange} 
-                  className="hidden" 
+                <input
+                  type="file"
+                  multiple
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  className="hidden"
                 />
               </div>
               <textarea
