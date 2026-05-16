@@ -10,6 +10,8 @@ import { useRef, useState, useCallback, useEffect } from 'react'
 import { chatApi, type Dialogue } from "@/lib/chat"
 import ReactMarkdown from 'react-markdown'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
+import remarkMath from 'remark-math'
+import rehypeKatex from 'rehype-katex'
 
 export const Route = createFileRoute('/chat/$convoId')({
   component: ConversationPage,
@@ -67,13 +69,14 @@ function MessageBubble({ dialogue, animate }: { dialogue: Dialogue; animate?: bo
         )}
 
         {/* Bubble */}
-        <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
+        <div className={`prose prose-sm max-w-none chat-prose px-4 py-2.5 rounded-2xl text-sm ${
           isUser
             ? 'bg-amber-400 text-black rounded-br-sm'
             : 'bg-white border border-gray-200 text-gray-800 rounded-bl-sm shadow-sm'
         }`}>
-          <div>
             <ReactMarkdown
+              remarkPlugins={[remarkMath]}
+              rehypePlugins={[[rehypeKatex, { throwOnError: false }]]}
               components={{
                 code({ className, children }) {
                   const match = /language-(\w+)/.exec(className || '')
@@ -90,7 +93,6 @@ function MessageBubble({ dialogue, animate }: { dialogue: Dialogue; animate?: bo
             >
               {dialogue.content}
             </ReactMarkdown>
-          </div>
         </div>
       </div>
     </div>
