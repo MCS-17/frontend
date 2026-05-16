@@ -251,7 +251,6 @@ function DashboardPage() {
                 <tr className="bg-zinc-900 text-left text-[11px] font-bold uppercase tracking-widest text-zinc-300">
                   <th className="px-5 py-3">Job Name</th>
                   <th className="px-5 py-3">Job ID</th>
-                  <th className="px-5 py-3">Type</th>
                   <th className="px-5 py-3">Status</th>
                   <th className="px-5 py-3">Submitted</th>
                   <th className="px-5 py-3">Runtime</th>
@@ -302,9 +301,6 @@ function DashboardPage() {
                         <span className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs font-semibold text-zinc-500">
                           {job.job_id}
                         </span>
-                      </td>
-                      <td className="whitespace-nowrap px-5 py-3 text-xs font-bold uppercase tracking-wide text-zinc-500">
-                        {job.type ?? "N/A"}
                       </td>
                       <td className="whitespace-nowrap px-5 py-3">
                         <JobStatusBadge status={job.status} />
@@ -519,8 +515,8 @@ function DashboardPage() {
                         : jobsApi.downloadOutput(selectedJob.job_id)
                     }
                   >
-                    <Download className="size-4" />
-                    Download output
+                  <Download className="size-4" />
+                     { activeOutputTab === "error" ? "Download error" : "Download output" } 
                   </button>
                 )}
                 {selectedJob.status === "Completed" && (

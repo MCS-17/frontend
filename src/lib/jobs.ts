@@ -5,7 +5,6 @@ const BASE_API_URI = '/api/slurm'
 export interface Job {
   job_id: string
   job_name: string
-  type: string | null // populated from MongoDB
   status: 'Running' | 'Pending' | 'Completed' | 'Failed' | 'Cancelled'
   submitted: string | null
   start: string | null
