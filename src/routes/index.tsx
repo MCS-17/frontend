@@ -172,7 +172,7 @@ function DashboardPage() {
 
   return (
     <div className="box-border h-full overflow-hidden p-6 lg:p-10">
-      <div className="mx-auto flex h-full max-w-7xl flex-col gap-6 overflow-hidden">
+      <div className="flex h-full flex-col gap-6 overflow-hidden">
         <div className="shrink-0">
 
           <h1 className="text-3xl font-bold tracking-tight text-zinc-900 lg:text-4xl">
