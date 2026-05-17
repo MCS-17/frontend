@@ -14,6 +14,7 @@ export interface Dialogue {
   sent_by: 'user' | 'ai'
   timestamp: string
   files?: DialogueFile[]
+  is_safe: boolean
 }
 
 export interface Conversation {

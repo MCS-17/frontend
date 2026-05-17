@@ -45,8 +45,6 @@ function getAccessToken() {
 
 export async function downloadFile(url: string, name: string) {
   const token = getAccessToken()
-  console.log('url passed in', url)
-
   const response = await fetch(
     url,
     {
@@ -77,7 +75,6 @@ export async function downloadFile(url: string, name: string) {
     : `${name}.txt`
 
   const blob = await response.blob()
-  console.log(blob)
 
   const objUrl = window.URL.createObjectURL(blob)
   const link = document.createElement("a")

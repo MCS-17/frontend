@@ -79,25 +79,28 @@ const getFileIcon = (fileName: string) => {
 }
 
 const MessageBubble = memo(
-  function MessageBubble({ dialogue, animate }: { dialogue: Dialogue; animate?: boolean }) {
+  function MessageBubble({ dialogue, animate }: {
+    dialogue: Dialogue; animate?: boolean
+  }) {
+    const blocked = dialogue.is_safe === false
     const isUser = dialogue.sent_by === 'user'
     const hasFiles = isUser && dialogue.files && dialogue.files.length > 0
     const content = useMemo(() => normalizeLatex(dialogue.content), [dialogue.content])
 
     const bubble = (
-      <div className={`flex items-end gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
+      <div className={`flex ${isUser ? 'items-end flex-row-reverse' : 'items-start flex-row'} gap-3`}>
         {/* Avatar */}
         <div className={`shrink-0 flex items-center justify-center size-8 rounded-full border ${isUser
-          ? 'bg-amber-400 border-amber-500 text-black'
+          ? `${blocked ? 'bg-gray-500' : 'bg-amber-400 text-black'} rounded-br-sm`
           : 'bg-white border-gray-200 text-gray-600'
-          }`}>
+          } ${blocked ? 'opacity-40' : ''}`}>
           {isUser ? <User className="size-4" /> : <Bot className="size-4" />}
         </div>
 
-        <div className={`flex flex-col gap-1.5 max-w-[70%] ${isUser ? 'items-end' : 'items-start'}`}>
+        <div className={`flex flex-col gap-1.5 ${isUser ? 'items-end' : 'items-start'}`}>
           {/* File chips */}
           {hasFiles && (
-            <div className="flex flex-wrap gap-1.5 justify-end">
+            <div className={`flex flex-wrap gap-1.5 justify-end ${blocked ? 'opacity-40' : ''}`}>
               {dialogue.files!.map((f, i) => (
                 <div
                   key={i}
@@ -111,10 +114,10 @@ const MessageBubble = memo(
           )}
 
           {/* Bubble */}
-          <div className={`prose prose-sm max-w-none chat-prose px-4 py-2.5 rounded-2xl text-sm ${isUser
-            ? 'bg-amber-400 text-black rounded-br-sm'
-            : 'bg-white border border-gray-200 text-gray-800 rounded-bl-sm shadow-sm'
-            }`}>
+          <div className={`prose prose-sm max-w-none chat-prose text-sm ${isUser
+            ? `${blocked ? 'bg-gray-200 text-gray-500' : 'bg-amber-400 text-black'} px-4 py-2.5 rounded-2xl rounded-br-sm`
+            : 'bg-white border border-gray-200 text-gray-800 rounded-2xl rounded-bl-sm px-4 py-2.5'
+            } ${blocked ? 'opacity-40' : ''}`}>
             <ReactMarkdown
               remarkPlugins={[remarkGithubAdmonitionsToDirectives, remarkDirective, remarkDirectiveRenderer, remarkMath, remarkGfm]}
               rehypePlugins={[[rehypeKatex, { throwOnError: false }]]}
@@ -122,7 +125,6 @@ const MessageBubble = memo(
                 code({ className, children }) {
                   const match = /language-(\w+)/.exec(className || '')
                   const isBlock = match || String(children).includes('\n')
-                  console.log(children, isBlock)
                   return isBlock ? (
                     <SyntaxHighlighter language={match?.[1] ?? 'text'}>
                       {String(children).replace(/\n$/, '')}
@@ -136,6 +138,19 @@ const MessageBubble = memo(
               {content}
             </ReactMarkdown>
           </div>
+
+          {/* Blocked notice */}
+          {blocked && (
+            <div className="flex items-center gap-1.5 text-xs text-red-400 mt-0.5">
+              <AlertTriangle className="size-3 shrink-0" />
+              <span>
+                Your prompt has been blocked for security reasons.{' '}
+                <button className="underline hover:text-red-500 transition-colors">
+                  Learn more
+                </button>
+              </span>
+            </div>
+          )}
         </div>
       </div>
     )
@@ -187,7 +202,6 @@ function ConversationPage() {
   const [blockedError, setBlockedError] = useState<string | null>(null)
   // Optimistically rendered messages before refetch
   const [pendingMessages, setPendingMessages] = useState<Dialogue[]>([])
-
   const fileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -209,6 +223,7 @@ function ConversationPage() {
         sent_by: 'user',
         timestamp: new Date().toISOString(),
         files: payload.files.map(f => ({ name: f.name, path: '' })),
+        is_safe: true,
       }
       setPendingMessages([userMsg])
       setMessage('')
@@ -217,12 +232,29 @@ function ConversationPage() {
     },
     onSuccess: (result: any) => {
       if (!result.is_safe) {
-        setBlockedError('Your message was flagged and could not be processed.')
+        const msg = pendingMessages[0]
+        queryClient.setQueryData(['conversation', convoId], (old: any) => ({
+          ...old,
+          dialogues: [...(old?.dialogues ?? []), { ...msg, is_safe: false }],
+        }))
         setPendingMessages([])
         return
       }
-      // Refetch the full history to get both messages persisted
-      queryClient.invalidateQueries({ queryKey: ['conversation', convoId] })
+
+      const aiMsg: Dialogue = {
+        _id: `ai-${Date.now()}`,
+        conversation_id: convoId,
+        content: result.final_response,
+        sent_by: 'ai',
+        timestamp: new Date().toISOString(),
+        is_safe: true
+      }
+
+      queryClient.setQueryData(['conversation', convoId], (old: any) => ({
+        ...old,
+        dialogues: [...(old?.dialogues ?? []), ...pendingMessages, aiMsg],
+      }))
+
       setPendingMessages([])
     },
     onError: () => {
@@ -286,8 +318,6 @@ function ConversationPage() {
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log(e.target)
-    console.log((e.target.files as FileList)[0])
     addFiles(e.target.files)
     // if (fileInputRef.current) fileInputRef.current.value = ''
   }
