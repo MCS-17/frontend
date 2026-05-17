@@ -276,6 +276,10 @@ function ConversationPage() {
     overscan: 5,
   })
 
+  useEffect(() => {
+    setPendingMessages([])
+  }, [convoId])
+
   // Scroll to bottom on new messages or typing indicator
   useEffect(() => {
     if (totalItems > 0) {
@@ -336,7 +340,7 @@ function ConversationPage() {
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} className='flex-1 w-full overflow-y-auto'>
+      <div key={convoId} ref={scrollRef} className='flex-1 w-full overflow-y-auto'>
         <div
           className="relative w-full max-w-3xl px-4 py-4 mx-auto"
           style={{ height: `${virtualizer.getTotalSize()}px` }}
