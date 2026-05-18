@@ -8,6 +8,8 @@ import { SuccessStep } from "./submit/step/-SuccessStep"
 import { FIELD_CONFIG } from "./submit/-submit.types"
 import { type UploadedFile } from "./submit/-submit.types"
 import { submitScriptApi } from "#/lib/submit"
+import { AlertCircle } from "lucide-react"
+import { motion, AnimatePresence } from "motion/react"
 
 export const Route = createFileRoute("/submit")({
   component: SubmitPage,
@@ -19,7 +21,13 @@ function SubmitPage() {
   const [fields, setFields] = useState<FormFields>(DEFAULTS)
   const [script, setScript] = useState(() => buildScript(DEFAULTS))
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])  // ← add
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  const handleError = (msg: string) => {
+    setErrorMessage(msg)
+    setTimeout(() => setErrorMessage(null), 3000)
+  }
 
   // Step 1 → 2: user picked a mode
   const handleModeSelect = (m: Mode) => {
@@ -93,7 +101,7 @@ function SubmitPage() {
       setStep("success")
     } catch (error) {
       console.error("Failed to submit Slurm job:", error)
-      alert(error instanceof Error ? error.message : "An unexpected error occurred.")
+      handleError("Failed to submit job to cluster.")
     } finally {
       setIsSubmitting(false)
     }
@@ -110,6 +118,21 @@ function SubmitPage() {
   return (
     <div className="box-border h-full overflow-hidden p-6 lg:p-10">
       <div className="flex h-full flex-col gap-6 overflow-hidden">
+
+        {/* error msg */}
+        <AnimatePresence>
+          {errorMessage && (
+            <motion.div
+              initial={{ opacity: 0, y: -20, x: 20 }}
+              animate={{ opacity: 1, y: 0, x: 0 }}
+              exit={{ opacity: 0, y: -20, x: 20 }}
+              className="fixed right-6 top-6 z-[100] flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700 shadow-xl shadow-red-500/10"
+            >
+              <AlertCircle className="size-5 shrink-0" />
+              {errorMessage}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Page header */}
         <div className="shrink-0">
@@ -201,6 +224,7 @@ function SubmitPage() {
             onReset={handleReset}
             uploadedFiles={uploadedFiles}
             setUploadedFiles={setUploadedFiles}
+            onError={() => handleError("Unable to proceed! Review your script again.")}
           />
         )}
 

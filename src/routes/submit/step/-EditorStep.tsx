@@ -145,6 +145,9 @@ function FieldsRenderer({ fields, onChange }: { fields: FormFields; onChange: (p
                     <input
                       type={cfg.type}
                       min={cfg.type === "number" ? 0 : undefined}
+                      pattern={cfg.pattern}
+                      title={cfg.hint}
+                      required
                       className={inputCls}
                       value={fields[cfg.key] ?? cfg.default}
                       placeholder={cfg.placeholder}
@@ -354,6 +357,7 @@ export function EditorStep({
   onReset,
   uploadedFiles,
   setUploadedFiles,
+  onError,
 }: {
   mode: Mode
   fields: FormFields
@@ -366,6 +370,7 @@ export function EditorStep({
   onReset: () => void
   uploadedFiles: UploadedFile[]
   setUploadedFiles: React.Dispatch<React.SetStateAction<UploadedFile[]>>
+  onError: () => void
 }) {
   const [copied, setCopied] = useState(false)
 
@@ -385,8 +390,31 @@ export function EditorStep({
     setUploadedFiles((prev: any) => prev.filter((f: any) => f.path !== path))
   }
 
+  const handleNext = (e: React.FormEvent) => {
+    e.preventDefault()
+    let isValid = true
+    for (const cfg of FIELD_CONFIG) {
+      if (cfg.pattern) {
+        const val = String(fields[cfg.key] ?? cfg.default)
+        const regex = new RegExp(cfg.pattern)
+        if (!regex.test(val)) {
+          isValid = false
+          break
+        }
+      }
+    }
+    if (!isValid) {
+      onError() 
+      return
+    }
+    onNext()
+  }
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-white/30 bg-white/60 shadow-xl shadow-slate-200/50 backdrop-blur-2xl">
+    <form 
+      noValidate
+      onSubmit={handleNext}
+      className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-white/30 bg-white/60 shadow-xl shadow-slate-200/50 backdrop-blur-2xl">
 
       {/* Mode label bar */}
       <div className="flex shrink-0 items-center gap-3 border-b border-slate-100 px-5 py-3">
@@ -469,8 +497,7 @@ export function EditorStep({
             Reset
           </button>
           <button
-            type="button"
-            onClick={onNext}
+            type="submit"
             disabled={!script}
             className="inline-flex items-center gap-2 rounded-xl bg-zinc-900 px-5 py-2 text-sm font-bold text-white shadow-lg shadow-zinc-200 transition-all hover:bg-zinc-700 disabled:opacity-40"
           >
@@ -479,6 +506,6 @@ export function EditorStep({
           </button>
         </div>
       </div>
-    </div>
+    </form>
   )
 }

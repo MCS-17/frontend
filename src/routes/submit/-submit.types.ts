@@ -107,6 +107,7 @@ export const FIELD_CONFIG: FieldConfig[] = [
     default: "01:00:00",
     sbatchFlag: "time",
     section: "Resources",
+    pattern: "^\\d{2}:\\d{2}:\\d{2}$",
     colSpan: 2,
   },
 
