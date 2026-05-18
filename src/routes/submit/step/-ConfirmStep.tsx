@@ -1,5 +1,5 @@
 import { ArrowLeft, SendHorizontal, TerminalSquare, FileCode } from "lucide-react"
-import type { UploadedFile } from "../submit.types"
+import type { UploadedFile } from "../-submit.types"
 
 function ScriptLine({ line }: { line: string }) {
   if (line.startsWith("#!/")) return <span className="text-violet-400">{line}</span>

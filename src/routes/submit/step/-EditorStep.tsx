@@ -21,7 +21,7 @@ import {
   type PartialFields,
   type Mode,
   type UploadedFile,
-} from "../submit.types"
+} from "../-submit.types"
 
 // ── Syntax-highlighted script line ───────────────────────────────────────────
 function ScriptLine({ line }: { line: string }) {

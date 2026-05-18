@@ -1,5 +1,5 @@
 import { FilePlus, Upload } from "lucide-react"
-import type { Mode } from "../submit.types"
+import type { Mode } from "../-submit.types"
 
 export function ModeStep({ onSelect }: { onSelect: (mode: Mode) => void }) {
   return (

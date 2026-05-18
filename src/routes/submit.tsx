@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { useState } from "react"
-import { DEFAULTS, buildScript, parseScript, type FormFields, type Mode, type PartialFields, type Step } from "./submit/submit.types"
-import { ModeStep } from "./submit/step/ModeStep"
-import { EditorStep } from "./submit/step/EditorStep"
-import { ConfirmStep } from "./submit/step/ConfirmStep"
-import { SuccessStep } from "./submit/step/SuccessStep"
-import { type UploadedFile } from "./submit/submit.types"
+import { DEFAULTS, buildScript, parseScript, type FormFields, type Mode, type PartialFields, type Step } from "./submit/-submit.types"
+import { ModeStep } from "./submit/step/-ModeStep"
+import { EditorStep } from "./submit/step/-EditorStep"
+import { ConfirmStep } from "./submit/step/-ConfirmStep"
+import { SuccessStep } from "./submit/step/-SuccessStep"
+import { type UploadedFile } from "./submit/-submit.types"
 
 export const Route = createFileRoute("/submit")({
   component: SubmitPage,
