@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SubmitRouteImport } from './routes/submit'
 import { Route as StorageRouteImport } from './routes/storage'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ChatRouteImport } from './routes/chat'
@@ -17,6 +18,11 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ChatIndexRouteImport } from './routes/chat/index'
 import { Route as ChatConvoIdRouteImport } from './routes/chat/$convoId'
 
+const SubmitRoute = SubmitRouteImport.update({
+  id: '/submit',
+  path: '/submit',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StorageRoute = StorageRouteImport.update({
   id: '/storage',
   path: '/storage',
@@ -59,6 +65,7 @@ export interface FileRoutesByFullPath {
   '/chat': typeof ChatRouteWithChildren
   '/login': typeof LoginRoute
   '/storage': typeof StorageRoute
+  '/submit': typeof SubmitRoute
   '/chat/$convoId': typeof ChatConvoIdRoute
   '/chat/': typeof ChatIndexRoute
 }
@@ -67,6 +74,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/login': typeof LoginRoute
   '/storage': typeof StorageRoute
+  '/submit': typeof SubmitRoute
   '/chat/$convoId': typeof ChatConvoIdRoute
   '/chat': typeof ChatIndexRoute
 }
@@ -77,6 +85,7 @@ export interface FileRoutesById {
   '/chat': typeof ChatRouteWithChildren
   '/login': typeof LoginRoute
   '/storage': typeof StorageRoute
+  '/submit': typeof SubmitRoute
   '/chat/$convoId': typeof ChatConvoIdRoute
   '/chat/': typeof ChatIndexRoute
 }
@@ -88,10 +97,18 @@ export interface FileRouteTypes {
     | '/chat'
     | '/login'
     | '/storage'
+    | '/submit'
     | '/chat/$convoId'
     | '/chat/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/login' | '/storage' | '/chat/$convoId' | '/chat'
+  to:
+    | '/'
+    | '/admin'
+    | '/login'
+    | '/storage'
+    | '/submit'
+    | '/chat/$convoId'
+    | '/chat'
   id:
     | '__root__'
     | '/'
@@ -99,6 +116,7 @@ export interface FileRouteTypes {
     | '/chat'
     | '/login'
     | '/storage'
+    | '/submit'
     | '/chat/$convoId'
     | '/chat/'
   fileRoutesById: FileRoutesById
@@ -109,10 +127,18 @@ export interface RootRouteChildren {
   ChatRoute: typeof ChatRouteWithChildren
   LoginRoute: typeof LoginRoute
   StorageRoute: typeof StorageRoute
+  SubmitRoute: typeof SubmitRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/submit': {
+      id: '/submit'
+      path: '/submit'
+      fullPath: '/submit'
+      preLoaderRoute: typeof SubmitRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/storage': {
       id: '/storage'
       path: '/storage'
@@ -183,6 +209,7 @@ const rootRouteChildren: RootRouteChildren = {
   ChatRoute: ChatRouteWithChildren,
   LoginRoute: LoginRoute,
   StorageRoute: StorageRoute,
+  SubmitRoute: SubmitRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

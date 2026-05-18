@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   MessageSquare,
   Trash2,
+  SendHorizontal
 } from "lucide-react"
 import { Link, useLocation, useNavigate, useParams } from "@tanstack/react-router"
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query"
@@ -23,11 +24,12 @@ import { chatApi, type Conversation } from "../lib/chat"
 type NavigationTab = {
   name: string
   icon: ComponentType<{ className?: string }>
-  to: "/" | "/chat" | "/storage" | "/admin"
+  to: "/" | "/chat" | "/storage" | "/admin" | "/submit"
 }
 
 const TOP_TABS: NavigationTab[] = [
   { name: "Chat", icon: MessageSquareMore, to: "/chat" },
+  { name: "Submit", icon: SendHorizontal, to: "/submit" },
   { name: "Dashboard", icon: LayoutGrid, to: "/" },
   { name: "Storage", icon: Folder, to: "/storage" },
 ]
