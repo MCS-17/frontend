@@ -12,6 +12,7 @@ export interface FieldConfig {
   placeholder?: string
   type: "text" | "number" | "textarea"
   default: string
+  pattern?: string // <-- ADD THIS
   sbatchFlag?: string
   sbatchSerialize?: (value: string) => string | null
   sbatchParse?: (script: string) => string | undefined
@@ -78,9 +79,24 @@ export const FIELD_CONFIG: FieldConfig[] = [
     placeholder: "e.g. 16G",
     type: "text",
     default: "8G",
+    pattern: "^\\d+[kKmMgGtT]$", // <-- Native HTML regex validation
     sbatchFlag: "mem",
     section: "Resources",
     colSpan: 1,
+    sbatchSerialize: (value) => {
+      const sanitized = value.trim().toUpperCase()
+      if (/^\d+[KMGT]$/.test(sanitized)) {
+        return `#SBATCH --mem=${sanitized}`
+      }
+      if (/^\d+$/.test(sanitized)) {
+        return `#SBATCH --mem=${sanitized}G`
+      }
+      return `#SBATCH --mem=1G` 
+    },
+    sbatchParse: (script) => {
+      const match = script.match(/^#SBATCH --mem=(\d+[KMGT])/im)
+      return match ? match[1].toUpperCase() : undefined
+    },
   },
   {
     key: "walltime",

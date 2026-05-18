@@ -8,13 +8,16 @@ import {
   RotateCcw,
   Search,
   SlidersHorizontal,
+  ChevronDown,
   TerminalSquare,
   X,
+  User,
   AlertCircle,
   Code,
 } from "lucide-react"
 import { useMemo, useState, useCallback, useEffect } from "react"
 import { type Job, type JobStatus, type JobStatusFilter, jobsApi } from "@/lib/jobs"
+import { type AuthUser } from "../lib/auth"
 
 export const Route = createFileRoute("/")({
   component: DashboardPage,
@@ -92,13 +95,40 @@ function JobStatusBadge({ status }: { status: JobStatus }) {
   )
 }
 
+function getStoredUser(): AuthUser | null {
+  if (typeof window === "undefined") return null
+  const rawUser = localStorage.getItem("authUser")
+  if (!rawUser) return null
+  try {
+    return JSON.parse(rawUser) as AuthUser
+  } catch {
+    return null
+  }
+}
+
 function DashboardPage() {
+  const authUser = getStoredUser()
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    const authUser = getStoredUser()
+    if (authUser?.role === "admin" || authUser?.role === "staff") {
+      setIsAdmin(true)
+    }
+  }, [])
+
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
+  const [userFilter, setUserFilter] = useState("")
+
+  const uniqueUsers = useMemo(() => {
+    const users = jobs.map((job) => job.user).filter(Boolean)
+    return Array.from(new Set(users)).sort()
+  }, [jobs])
 
   const [selectedJob, setSelectedJob] = useState<Job | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
@@ -145,12 +175,16 @@ function DashboardPage() {
     return jobs
       .filter((job) => {
         const q = searchQuery.toLowerCase()
-        return (
-          job.job_name.toLowerCase().includes(q) ||
-          job.job_id.toLowerCase().includes(q)
-        )
+
+        const matchesSearch = job.job_name.toLowerCase().includes(q) || job.job_id.toLowerCase().includes(q)
+
+        const matchesUser = userFilter
+          ? job.user === userFilter
+          : true
+
+        return matchesSearch && matchesUser
       })
-  }, [jobs, searchQuery])
+  }, [jobs, searchQuery, userFilter])
 
   async function openJobDetail(job: Job) {
     setSelectedJob(job)           // show modal immediately with list data
@@ -204,27 +238,47 @@ function DashboardPage() {
               </div>
             </div>
 
-            <div className="mt-4 flex flex-wrap gap-2">
-              {statusTabs.map((tab) => {
-                const isActive = statusFilter === tab.value
+            <div className="mt-4 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+              <div className="mt-4 flex flex-wrap gap-2">
+                {statusTabs.map((tab) => {
+                  const isActive = statusFilter === tab.value
 
-                return (
-                  <button
-                    key={tab.value}
-                    type="button"
-                    onClick={() => setStatusFilter(tab.value)}
-                    className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${isActive
-                      ? "bg-zinc-900 text-white shadow-lg shadow-zinc-200"
-                      : "border border-slate-200 bg-white/60 text-zinc-500 hover:bg-white hover:text-zinc-900"
-                      }`}
-                  >
-                    {tab.label}
-                  </button>
-                )
-              })}
+                  return (
+                    <button
+                      key={tab.value}
+                      type="button"
+                      onClick={() => setStatusFilter(tab.value)}
+                      className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${isActive
+                        ? "bg-zinc-900 text-white shadow-lg shadow-zinc-200"
+                        : "border border-slate-200 bg-white/60 text-zinc-500 hover:bg-white hover:text-zinc-900"
+                        }`}
+                    >
+                      {tab.label}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {isAdmin && (
+                  <div className="relative shrink-0">
+                    <User className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
+
+                    <select
+                      value={userFilter}
+                      onChange={(event) => setUserFilter(event.target.value)}
+                      className="h-9 w-full appearance-none rounded-xl border border-slate-200 bg-white/60 pl-9 pr-8 text-xs font-medium text-zinc-900 outline-none transition-all focus:border-amber-400 sm:w-48 cursor-pointer"
+                    >
+                      <option value="">All users</option>
+                      {uniqueUsers.map((u) => (
+                        <option key={u} value={u}>{u}</option>
+                      ))}
+                    </select>
+
+                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
+                  </div>
+                )}
             </div>
           </div>
-
           <div className="min-h-0 flex-1 overflow-auto">
             <table className="w-full border-collapse">
               <thead className="sticky top-0 z-10">
@@ -233,6 +287,7 @@ function DashboardPage() {
                   <th className="px-5 py-3">Job ID</th>
                   <th className="px-5 py-3">Status</th>
                   <th className="px-5 py-3">Submitted</th>
+                  {isAdmin && <th className="px-5 py-3">User</th>}
                   <th className="px-5 py-3">Runtime</th>
                   <th className="px-5 py-3 text-right">Credits</th>
                   <th className="px-5 py-3 text-right">Actions</th>
@@ -288,6 +343,14 @@ function DashboardPage() {
                       <td className="whitespace-nowrap px-5 py-3 text-xs font-medium text-zinc-500">
                         {job.submitted}
                       </td>
+                      {isAdmin && (
+                        <td className="whitespace-nowrap px-5 py-3 text-xs font-bold text-zinc-600">
+                          <div className="flex items-center gap-1.5">
+                            <User className="size-3.5 text-zinc-400" />
+                            {job.user}
+                          </div>
+                        </td>
+                      )}
                       <td className="whitespace-nowrap px-5 py-3 text-xs font-medium text-zinc-500">
                         {job.runtime || (job.status === "Pending" ? "Queued" : "—")}
                       </td>
@@ -384,6 +447,12 @@ function DashboardPage() {
                   <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                     <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-zinc-500">{selectedJob.job_id}</span>
                     <JobStatusBadge status={selectedJob.status} />
+                    {isAdmin && (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                        <User className="size-3" />
+                        {selectedJob.user}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <button type="button" onClick={closeModal}
@@ -495,8 +564,8 @@ function DashboardPage() {
                         : jobsApi.downloadOutput(selectedJob.job_id)
                     }
                   >
-                  <Download className="size-4" />
-                     { activeOutputTab === "error" ? "Download error" : "Download output" } 
+                    <Download className="size-4" />
+                    {activeOutputTab === "error" ? "Download error" : "Download output"}
                   </button>
                 )}
                 {selectedJob.status === "Completed" && (
@@ -504,13 +573,6 @@ function DashboardPage() {
                     className="inline-flex items-center gap-2 rounded-xl border border-zinc-700 px-4 py-2 text-sm font-bold text-zinc-300 transition-all hover:bg-zinc-800 hover:text-white">
                     <RotateCcw className="size-4" />
                     Resubmit job
-                  </button>
-                )}
-                {isActiveJob(selectedJob) && (
-                  <button type="button"
-                    className="inline-flex items-center gap-2 rounded-xl border border-red-800 bg-red-950 px-4 py-2 text-sm font-bold text-red-400 transition-all hover:bg-red-900 hover:text-red-300">
-                    <X className="size-4" />
-                    Cancel job
                   </button>
                 )}
               </div>
