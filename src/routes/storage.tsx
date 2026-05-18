@@ -119,6 +119,16 @@ function StoragePage() {
   const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false)
   const [newFolderName, setNewFolderName] = useState("")
   const [isCreatingFolder, setIsCreatingFolder] = useState(false)
+  const [hideLogs, setHideLogs] = useState(true)
+
+  const filteredItems = useMemo(() => {
+    if (!hideLogs) return items
+
+    return items.filter((item) => {
+      if (item.type === "folder") return true
+      return !item.name.endsWith(".err") && !item.name.endsWith(".out")
+    })
+  }, [items, hideLogs])
 
   const pathSegments = useMemo(() => {
     return currentPath ? currentPath.split("/") : []
@@ -174,14 +184,14 @@ function StoragePage() {
   }
 
   const handleSelectAll = () => {
-    if (items.length === 0) return
+    if (filteredItems.length === 0) return
 
     setSelectedPaths((previous) => {
-      if (previous.size === items.length) {
+      if (previous.size === filteredItems.length) {
         return new Set()
       }
 
-      return new Set(items.map((item) => item.path))
+      return new Set(filteredItems.map((item) => item.path))
     })
   }
 
@@ -299,7 +309,7 @@ function StoragePage() {
     }
   }
 
-  const isAllSelected = items.length > 0 && selectedPaths.size === items.length
+  const isAllSelected = filteredItems.length > 0 && selectedPaths.size === filteredItems.length
 
   return (
     <div className="p-6 lg:p-10 flex flex-col h-full gap-6 relative">
@@ -366,43 +376,60 @@ function StoragePage() {
           </div>
         ) : null}
 
-        <nav className="flex items-center gap-2 text-sm font-medium">
-          <button
-            type="button"
-            onClick={handleNavigateHome}
-            className="p-1.5 rounded-lg hover:bg-black/5 text-zinc-500 hover:text-zinc-900 transition-colors cursor-pointer"
-          >
-            <Home className="size-4" />
-          </button>
-
-          <ChevronRight className="size-4 text-zinc-300" />
-
-          <button
-            type="button"
-            onClick={handleNavigateHome}
-            className="px-2 py-1 text-zinc-400 hover:text-zinc-900 transition-colors cursor-pointer"
-          >
-            My Storage
-          </button>
-
-          {pathSegments.map((segment, index) => (
-            <div
-              key={joinPath(pathSegments.slice(0, index + 1))}
-              className="flex items-center gap-1"
+        <div className="flex items-center justify-between">
+          <nav className="flex items-center gap-2 text-sm font-medium">
+            <button
+              type="button"
+              onClick={handleNavigateHome}
+              className="p-1.5 rounded-lg hover:bg-black/5 text-zinc-500 hover:text-zinc-900 transition-colors cursor-pointer"
             >
-              <ChevronRight className="size-4 text-zinc-300" />
+              <Home className="size-4" />
+            </button>
 
-              <button
-                type="button"
-                onClick={() => handleNavigateToSegment(index)}
-                className="px-2 py-1 rounded-md hover:bg-black/5 text-zinc-600 hover:text-zinc-900 transition-colors cursor-pointer"
+            <ChevronRight className="size-4 text-zinc-300" />
+
+            <button
+              type="button"
+              onClick={handleNavigateHome}
+              className="px-2 py-1 text-zinc-400 hover:text-zinc-900 transition-colors cursor-pointer"
+            >
+              My Storage
+            </button>
+
+            {pathSegments.map((segment, index) => (
+              <div
+                key={joinPath(pathSegments.slice(0, index + 1))}
+                className="flex items-center gap-1"
               >
-                {segment}
-              </button>
+                <ChevronRight className="size-4 text-zinc-300" />
+
+                <button
+                  type="button"
+                  onClick={() => handleNavigateToSegment(index)}
+                  className="px-2 py-1 rounded-md hover:bg-black/5 text-zinc-600 hover:text-zinc-900 transition-colors cursor-pointer"
+                >
+                  {segment}
+                </button>
+              </div>
+            ))}
+          </nav>
+          <button
+            type="button"
+            onClick={() => setHideLogs(!hideLogs)}
+            className="flex items-center gap-2 text-sm font-bold text-zinc-500 hover:text-zinc-900 transition-colors cursor-pointer select-none"
+          >
+            <div className={`transition-colors ${hideLogs ? "text-amber-500" : "text-zinc-400"}`}>
+              {hideLogs ? (
+                <CheckSquare className="size-4" />
+              ) : (
+                <Square className="size-4" />
+              )}
             </div>
-          ))}
-        </nav>
+            Hide .err and .out files
+          </button>
+        </div>
       </div>
+
 
       <div className="flex-1 min-h-0 bg-white/50 backdrop-blur-2xl border border-white/20 rounded-xl shadow-xl shadow-slate-200/50 overflow-hidden flex flex-col relative">
         <div className="grid grid-cols-[48px_1fr_100px_180px_120px] gap-2 px-6 py-3 border-b border-white/20 bg-white/40 text-[10px] font-bold uppercase tracking-widest text-slate-400 items-center">
@@ -432,7 +459,7 @@ function StoragePage() {
             <div className="h-full flex items-center justify-center text-sm font-semibold text-slate-400">
               Loading files...
             </div>
-          ) : items.length === 0 ? (
+          ) : filteredItems.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center gap-3 text-center text-slate-400">
               <Folder className="size-12 text-slate-300" />
 
@@ -444,7 +471,7 @@ function StoragePage() {
               </div>
             </div>
           ) : (
-            items.map((item) => {
+            filteredItems.map((item) => {
               const isSelected = selectedPaths.has(item.path)
               const isFolder = item.type === "folder"
 
@@ -452,11 +479,10 @@ function StoragePage() {
                 <motion.div
                   key={item.path}
                   onClick={() => handleRowClick(item)}
-                  className={`grid grid-cols-[48px_1fr_100px_180px_120px] gap-2 px-6 py-2.5 items-center border-b border-slate-50 hover:bg-slate-100/50 transition-colors group cursor-pointer select-none ${
-                    isSelected
-                      ? "bg-amber-400/10 border-l-4 border-l-amber-400 pl-[21px]"
-                      : "pl-6"
-                  }`}
+                  className={`grid grid-cols-[48px_1fr_100px_180px_120px] gap-2 px-6 py-2.5 items-center border-b border-slate-50 hover:bg-slate-100/50 transition-colors group cursor-pointer select-none ${isSelected
+                    ? "bg-amber-400/10 border-l-4 border-l-amber-400 pl-[21px]"
+                    : "pl-6"
+                    }`}
                 >
                   <div className="flex items-center justify-center">
                     <button
@@ -466,11 +492,10 @@ function StoragePage() {
                         handleToggleSelect(item)
                       }}
                       title={isSelected ? "Unselect" : "Select"}
-                      className={`p-1.5 rounded-lg transition-all cursor-pointer ${
-                        isSelected
-                          ? "text-amber-500 hover:bg-amber-50"
-                          : "text-slate-400 hover:text-slate-900 hover:bg-slate-200/50"
-                      }`}
+                      className={`p-1.5 rounded-lg transition-all cursor-pointer ${isSelected
+                        ? "text-amber-500 hover:bg-amber-50"
+                        : "text-slate-400 hover:text-slate-900 hover:bg-slate-200/50"
+                        }`}
                     >
                       {isSelected ? (
                         <CheckSquare className="size-4" />

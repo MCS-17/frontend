@@ -5,7 +5,9 @@ import { ModeStep } from "./submit/step/-ModeStep"
 import { EditorStep } from "./submit/step/-EditorStep"
 import { ConfirmStep } from "./submit/step/-ConfirmStep"
 import { SuccessStep } from "./submit/step/-SuccessStep"
+import { FIELD_CONFIG } from "./submit/-submit.types"
 import { type UploadedFile } from "./submit/-submit.types"
+import { submitScriptApi } from "#/lib/submit"
 
 export const Route = createFileRoute("/submit")({
   component: SubmitPage,
@@ -62,9 +64,36 @@ function SubmitPage() {
   const handleSubmit = async () => {
     setIsSubmitting(true)
     try {
-      // TODO: wire up to jobsApi.submitJob(script)
-      await new Promise((r) => setTimeout(r, 1000))
+      const fieldPayload = Object.fromEntries(
+        FIELD_CONFIG.map((cfg) => [cfg.key, fields[cfg.key] ?? cfg.default]),
+      )
+
+      // 1. Format payload to match the backend types
+      const jobParams = {
+        jobName: fieldPayload.jobName || 'my_job',
+        nodes: Number(fieldPayload.nodes ?? 1),
+        cpus: Number(fieldPayload.cpus ?? 1),
+        gpus: Number(fieldPayload.gpus ?? 0),
+        memory: fieldPayload.memory || '1G',
+        walltime: fieldPayload.walltime || '01:00:00',
+        output: fieldPayload.output || null,
+        error: fieldPayload.error || null,
+        body: fields.body || '',
+      }
+
+      // 2. Extract raw File objects
+      const rawFiles = uploadedFiles
+        .map((f) => (f instanceof File ? f : (f as any).file))
+        .filter(Boolean)
+
+      // 3. Submit via the new API client
+      const result = await submitScriptApi.submitJob(jobParams, rawFiles)
+      console.log("Job staged and submitted successfully:", result)
+
       setStep("success")
+    } catch (error) {
+      console.error("Failed to submit Slurm job:", error)
+      alert(error instanceof Error ? error.message : "An unexpected error occurred.")
     } finally {
       setIsSubmitting(false)
     }
@@ -121,9 +150,9 @@ function SubmitPage() {
                         className={`transition-all duration-300 disabled:cursor-default ${isClickable ? "cursor-pointer" : ""}`}
                       >
                         <span className={`
-          transition-all duration-300 font-semibold whitespace-nowrap
-          ${isCurrent ? "text-sm text-zinc-900" : isDone ? "text-xs text-amber-500 hover:text-amber-700" : "text-[11px] text-zinc-400"}
-        `}>
+                            transition-all duration-300 font-semibold whitespace-nowrap
+                            ${isCurrent ? "text-sm text-zinc-900" : isDone ? "text-xs text-amber-500 hover:text-amber-700" : "text-[11px] text-zinc-400"}
+                          `}>
                           {labels[s]}
                         </span>
                       </button>
