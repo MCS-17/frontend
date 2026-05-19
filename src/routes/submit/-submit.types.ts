@@ -123,7 +123,7 @@ export const FIELD_CONFIG: FieldConfig[] = [
     key: "walltime",
     label: "Walltime limit",
     hint: "HH:MM:SS",
-    placeholder: "01:00:00",
+    placeholder: "00:10:00",
     type: "text",
     default: "01:00:00",
     sbatchFlag: "time",
