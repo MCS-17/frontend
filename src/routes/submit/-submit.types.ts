@@ -52,6 +52,27 @@ export const FIELD_CONFIG: FieldConfig[] = [
     colSpan: 1,
   },
   {
+    key: "ntasks",
+    label: "NTasks",
+    hint: "default: 1",
+    type: "number",
+    default: "1",
+    sbatchFlag: "ntasks",
+    section: "Resources",
+    colSpan: 1,
+  },
+  {
+    key: "ntasksPerNode",
+    label: "NTasks / node",
+    hint: "optional",
+    type: "number",
+    default: "0",
+    sbatchSerialize: (v) => (parseInt(v) > 0 ? `#SBATCH --ntasks-per-node=${v}` : null),
+    sbatchParse: (script) => script.match(/--ntasks-per-node=(\d+)/)?.[1],
+    section: "Resources",
+    colSpan: 1,
+  },
+  {
     key: "cpus",
     label: "CPUs / task",
     hint: "default: 4",
@@ -67,8 +88,8 @@ export const FIELD_CONFIG: FieldConfig[] = [
     hint: "default: 0",
     type: "number",
     default: "0",
-    sbatchSerialize: (v) => (parseInt(v) > 0 ? `#SBATCH --gres=gpu:${v}` : null),
-    sbatchParse: (script) => script.match(/--gres=gpu:(\d+)/)?.[1],
+    sbatchSerialize: (v) => (parseInt(v) > 0 ? `#SBATCH --gpus-per-node=${v}` : null),
+    sbatchParse: (script) => script.match(/--gpus-per-node=(\d+)/)?.[1],
     section: "Resources",
     colSpan: 1,
   },
@@ -91,7 +112,7 @@ export const FIELD_CONFIG: FieldConfig[] = [
       if (/^\d+$/.test(sanitized)) {
         return `#SBATCH --mem=${sanitized}G`
       }
-      return `#SBATCH --mem=1G` 
+      return `#SBATCH --mem=1G`
     },
     sbatchParse: (script) => {
       const match = script.match(/^#SBATCH --mem=(\d+[KMGT])/im)
