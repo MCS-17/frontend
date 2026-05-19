@@ -78,7 +78,7 @@ function SubmitPage() {
 
       // 1. Format payload to match the backend types
       const jobParams = {
-        jobName: fieldPayload.jobName || 'my_job',
+        jobName: fieldPayload.jobName,
         nodes: Number(fieldPayload.nodes ?? 1),
         cpus: Number(fieldPayload.cpus ?? 1),
         gpus: Number(fieldPayload.gpus ?? 0),
@@ -87,6 +87,8 @@ function SubmitPage() {
         output: fieldPayload.output || null,
         error: fieldPayload.error || null,
         body: fields.body || '',
+        ntasks: Number(fields.ntasks ?? 1),
+        ntasksPerNode: Number(fields.ntasksPerNode) || null,
       }
 
       // 2. Extract raw File objects

@@ -175,6 +175,7 @@ function FilesPanel({
   onRemove: (path: string) => void
 }) {
   const [copiedPath, setCopiedPath] = useState<string | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFiles = (fileList: FileList) => {
@@ -195,8 +196,29 @@ function FilesPanel({
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
   }
 
+  const onDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }
+
+  const onDragLeave = (e: React.DragEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsDragging(false)
+    }
+  }
+
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+    if (e.dataTransfer.files) handleFiles(e.dataTransfer.files)
+  }
+
   return (
-    <div>
+    <div
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+    >
       <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-zinc-400">Input files</p>
       <input
         ref={fileInputRef}
@@ -206,11 +228,19 @@ function FilesPanel({
         onChange={(e) => { if (e.target.files) handleFiles(e.target.files) }}
       />
 
-      <div className="flex flex-col gap-2">
+      <div className={`flex flex-col gap-2 
+          ${isDragging ? "outline-dashed outline-2 outline-amber-400 bg-amber-50/30" : ""
+        }`}>
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="flex items-center gap-2 rounded-xl border border-dashed border-slate-200 px-3 py-2.5 text-xs font-bold text-zinc-400 transition-all hover:border-amber-300 hover:bg-amber-50/30 hover:text-zinc-600"
+          className={`
+            flex items-center gap-2 rounded-xl border border-dashed border-slate-200 px-3 py-2.5 text-xs font-bold text-zinc-400 transition-all hover:border-amber-300 hover:bg-amber-50/30 hover:text-zinc-600
+            ${isDragging
+              ? "border-amber-400 bg-amber-50/50 text-zinc-600"
+              : "border-slate-200 text-zinc-400 hover:border-amber-300 hover:bg-amber-50/30 hover:text-zinc-600"
+            }
+            `}
         >
           <Upload className="size-3.5" />
           Add input file
@@ -248,7 +278,7 @@ function FilesPanel({
           </div>
         ))}
       </div>
-    </div>
+    </div >
   )
 }
 
@@ -404,14 +434,14 @@ export function EditorStep({
       }
     }
     if (!isValid) {
-      onError() 
+      onError()
       return
     }
     onNext()
   }
 
   return (
-    <form 
+    <form
       noValidate
       onSubmit={handleNext}
       className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-white/30 bg-white/60 shadow-xl shadow-slate-200/50 backdrop-blur-2xl">

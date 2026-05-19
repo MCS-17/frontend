@@ -6,7 +6,7 @@ export interface JobParams {
   jobName: string
   nodes: number
   ntasks: number
-  ntasksPerNode: number
+  ntasksPerNode: number | null
   cpus: number
   gpus: number
   memory: string
@@ -31,8 +31,6 @@ export const submitScriptApi = {
     
     // Append all attached files
     files.forEach((f) => form.append('files', f))
-
-    console.log(params)
 
     return apiRequest<SubmitResponse>(`${BASE_API_URI}/submit`, {
       method: 'POST',
