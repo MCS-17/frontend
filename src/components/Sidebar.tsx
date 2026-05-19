@@ -17,7 +17,7 @@ import {
   SendHorizontal
 } from "lucide-react"
 import { Link, useLocation, useNavigate, useParams } from "@tanstack/react-router"
-import { useQuery, useQueryClient, useMutation, useIsMutating } from "@tanstack/react-query"
+import { useQuery, useQueryClient, useMutation, useMutationState } from "@tanstack/react-query"
 import { logout, type AuthUser } from "../lib/auth"
 import { chatApi, type Conversation } from "../lib/chat"
 
@@ -85,7 +85,10 @@ function ConversationList({
   const queryClient = useQueryClient()
   const [hoveredId, setHoveredId] = useState<string | null>(null)
 
-  const isCreating = useIsMutating({ mutationKey: ['createConversation'] }) > 0
+  // Gather all parallel background creation streams
+  const pendingCreations = useMutationState({
+    filters: { mutationKey: ["createConversation"], status: "pending" },
+  })
 
   const { data, isLoading } = useQuery({
     queryKey: ["conversations"],
@@ -110,6 +113,25 @@ function ConversationList({
     return (
       <div className="px-3 py-1">
         <div className="w-full h-px bg-white/30 mb-2" />
+
+        {/* Render indicator pills for active creations in miniature layout */}
+        {pendingCreations.map((m: any) => {
+          const pendingId = m.variables?.pendingId
+          if (!pendingId) return null
+          return (
+            <Link
+              key={pendingId}
+              to="/chat/$convoId"
+              params={{ convoId: pendingId }}
+              onClick={onNavigate}
+              className="flex items-center justify-center px-3 py-2.5 rounded-xl mb-0.5 bg-amber-400/10 text-amber-500 animate-pulse"
+              title="Starting chat..."
+            >
+              <MessageSquare className="size-[16px] shrink-0 text-amber-500" />
+            </Link>
+          )
+        })}
+
         {isLoading ? (
           <div className="flex justify-center py-2">
             <div className="size-1.5 rounded-full bg-zinc-300 animate-pulse" />
@@ -165,19 +187,47 @@ function ConversationList({
         )}
 
         <AnimatePresence initial={false}>
-          {isCreating && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-            >
-              <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-amber-700 bg-amber-400/10 mb-0.5">
-                <MessageSquare className="size-[15px] shrink-0 text-amber-500" />
-                <span className="text-xs font-semibold truncate pr-2">Starting chat</span>
-                <SidebarTypingIndicator />
-              </div>
-            </motion.div>
-          )}
+          {/* render every active pending session */}
+          {pendingCreations.map((m: any) => {
+            const vars = m.variables
+            const pendingId = vars?.pendingId
+            if (!pendingId) return null
+            const isActive = currentConvoId === pendingId
+
+            return (
+              <motion.div
+                key={pendingId}
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -8 }}
+                transition={{ duration: 0.15 }}
+                className="relative group"
+              >
+                <Link
+                  to="/chat/$convoId"
+                  params={{ convoId: pendingId }}
+                  onClick={onNavigate}
+                  className={`
+                    relative flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all duration-200 w-full bg-amber-400/5 text-zinc-600
+                    ${isActive ? "bg-amber-400/10 text-zinc-900" : "hover:bg-black/5 hover:text-zinc-900"}
+                  `}
+                >
+                  {isActive && (
+                    <div className="absolute left-[-12px] top-1.5 bottom-1.5 w-1 bg-amber-400 rounded-r-full" />
+                  )}
+                  <MessageSquare className="size-[15px] shrink-0 text-amber-500 animate-pulse" />
+                  <span className="text-xs truncate italic flex items-center gap-1.5 pr-5">
+                    Starting chat
+                    <span className="flex gap-0.5 items-center">
+                      <span className="size-1 rounded-full bg-zinc-400 animate-bounce [animation-delay:0ms]" />
+                      <span className="size-1 rounded-full bg-zinc-400 animate-bounce [animation-delay:150ms]" />
+                      <span className="size-1 rounded-full bg-zinc-400 animate-bounce [animation-delay:300ms]" />
+                    </span>
+                  </span>
+                </Link>
+              </motion.div>
+            )
+          })}
 
           {conversations.map((convo) => {
             const isActive = currentConvoId === convo._id

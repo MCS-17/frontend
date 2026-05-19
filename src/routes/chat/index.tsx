@@ -76,25 +76,36 @@ function ChatPage() {
 
   const createMutation = useMutation({
     mutationKey: ['createConversation'],
-    mutationFn: () => chatApi.createConversation(message.trim(), stagedFiles),
-    onSuccess: (data) => {
-      if (!data.is_safe) {
-        setBlockedError("Your message was flagged and could not be processed.")
-        return
-      }
-
+    mutationFn: (vars: { message: string; files: File[]; pendingId: string}) => 
+      chatApi.createConversation(vars.message.trim(), vars.files),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["conversations"] })
-      // Navigate to the conversation page once you build it
-      navigate({ to: '/chat/$convoId', params: { convoId: data.convo_id! } })
     },
   })
 
   const canSend = message.trim().length > 0 && !createMutation.isPending
 
-  const handleSend = () => {
-    if (!canSend) return
+  const handleSend = () => {if (!canSend) return
     setBlockedError(null)
-    createMutation.mutate()
+
+    // Generate a isolated temporary ID for this specific room session
+    const pendingId = `pending-${Date.now()}`
+    const textToSend = message.trim()
+    const filesToSend = [...stagedFiles]
+
+    // Wipe out local inputs instantly so the base chat is clear for another message
+    setMessage('')
+    setStagedFiles([])
+
+    // Pass everything into the global state manager
+    createMutation.mutate({ 
+      message: textToSend, 
+      files: filesToSend, 
+      pendingId 
+    })
+
+    // Instantly jump out to the new concurrent pending screen
+    navigate({ to: '/chat/$convoId', params: { convoId: pendingId } })
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {

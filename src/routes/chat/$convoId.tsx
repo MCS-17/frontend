@@ -114,7 +114,7 @@ const MessageBubble = memo(
           )}
 
           {/* Bubble */}
-          <div className={`prose prose-sm max-w-none chat-prose text-sm ${isUser
+          <div className={`prose prose-sm max-w-3xl chat-prose text-sm ${isUser
             ? `${blocked ? 'bg-gray-200 text-gray-500' : 'bg-amber-400 text-black'} px-4 py-2.5 rounded-2xl rounded-br-sm`
             : 'bg-white border border-gray-200 text-gray-800 rounded-2xl rounded-bl-sm px-4 py-2.5'
             } ${blocked ? 'opacity-40' : ''}`}>
@@ -204,6 +204,43 @@ function ConversationPage() {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
+  // Tag if this page instance is a temporary loader channel
+  const isPendingRoute = convoId.startsWith('pending-')
+
+  // Intercept active conversation pipelines to locate this page's task
+  const creationMutations = useMutationState({
+    filters: { mutationKey: ['createConversation'] },
+  })
+  const activeCreation = creationMutations.find(
+    (m) => (m.variables as any)?.pendingId === convoId
+  )
+
+  useEffect(() => {
+    if (isPendingRoute && !activeCreation) {
+      // why are you here?
+      navigate({ 
+        to: '/chat', 
+        replace: true 
+      })
+    }
+  }, [isPendingRoute, activeCreation, navigate])
+
+  // state mutations and auto-swap the client to the database-assigned route
+  useEffect(() => {
+    if (isPendingRoute && activeCreation?.status === 'success') {
+      const res = activeCreation.data as any
+      if (res?.is_safe === false) {
+        setBlockedError("Your message was flagged and could not be processed.")
+      } else if (res?.convo_id) {
+        navigate({
+          to: '/chat/$convoId',
+          params: { convoId: res.convo_id },
+          replace: true, // Swaps history stack logs cleanly
+        })
+      }
+    }
+  }, [isPendingRoute, activeCreation?.status, activeCreation?.data, navigate])
+
   const pendingMutations = useMutationState({
     filters: { mutationKey: ['continueConversation', convoId], status: 'pending' },
     select: (mutation) => mutation.state.variables as { message: string; files: File[] },
@@ -212,6 +249,7 @@ function ConversationPage() {
   const { data, isLoading, isError } = useQuery({
     queryKey: ['conversation', convoId],
     queryFn: () => chatApi.getConversation(convoId),
+    enabled: !isPendingRoute, // dont get data if its pending
   })
 
   const sendMutation = useMutation({
@@ -276,10 +314,40 @@ function ConversationPage() {
       is_safe: true,
     }))
   }, [pendingMutations, convoId])
-  const allMessages = useMemo(() => [...dialogues, ...optimisticDialogues], [dialogues, optimisticDialogues])
-  const isAiThinking = pendingMutations.length > 0
+
+  const allMessages = useMemo(() => {
+    if (isPendingRoute) {
+      if (activeCreation?.variables) {
+        const vars = activeCreation.variables as any
+        const res = activeCreation.data as any
+        return [{
+          _id: 'pending-initial-bubble',
+          conversation_id: convoId,
+          content: vars.message || '',
+          sent_by: 'user' as const,
+          timestamp: new Date().toISOString(),
+          files: vars.files?.map((f: File) => ({ name: f.name, path: '' })) || [],
+          is_safe: res?.is_safe ?? true,
+        }]
+      }
+      else if (activeCreation?.status === 'error') {
+        setBlockedError("Failed to create conversation. Please try again.")
+      }
+      return []
+    }
+    return [...dialogues, ...optimisticDialogues]
+  }, [
+    isPendingRoute, 
+    activeCreation?.variables, 
+    activeCreation?.data,
+    dialogues, 
+    optimisticDialogues, 
+    convoId
+  ])
+
+  const isAiThinking = pendingMutations.length > 0 || (isPendingRoute && activeCreation?.status === 'pending')
   const totalItems = allMessages.length + (isAiThinking ? 1 : 0)
-  const title = data?.conversation?.title ?? 'Conversation'
+  const title = isPendingRoute ? "Starting chat..." : (data?.conversation?.title ?? 'Conversation')
 
   const virtualizer = useVirtualizer({
     count: totalItems,
@@ -396,10 +464,10 @@ function ConversationPage() {
 
       {/* Input bar — fixed at bottom */}
       <div className="w-full max-w-3xl px-4 pb-6 pt-2 shrink-0">
-        <div className="flex flex-row items-end gap-4">
+        <div className="relative flex flex-row items-end gap-4">
 
           {/* Error banner */}
-          <div className="absolute -top-10 left-0 right-0 px-4 flex justify-center">
+          <div className="absolute -top-12 left-0 right-0 px-4 flex justify-center z-10">
             <AnimatePresence>
               {(blockedError || sendMutation.isError) && (
                 <motion.div
