@@ -125,7 +125,7 @@ export const FIELD_CONFIG: FieldConfig[] = [
     hint: "HH:MM:SS",
     placeholder: "00:10:00",
     type: "text",
-    default: "01:00:00",
+    default: "00:10:00",
     sbatchFlag: "time",
     section: "Resources",
     pattern: "^\\d{2}:\\d{2}:\\d{2}$",
