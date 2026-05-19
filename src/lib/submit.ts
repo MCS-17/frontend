@@ -5,6 +5,8 @@ const BASE_API_URI = '/api/jobs'
 export interface JobParams {
   jobName: string
   nodes: number
+  ntasks: number
+  ntasksPerNode: number
   cpus: number
   gpus: number
   memory: string
@@ -29,6 +31,8 @@ export const submitScriptApi = {
     
     // Append all attached files
     files.forEach((f) => form.append('files', f))
+
+    console.log(params)
 
     return apiRequest<SubmitResponse>(`${BASE_API_URI}/submit`, {
       method: 'POST',
