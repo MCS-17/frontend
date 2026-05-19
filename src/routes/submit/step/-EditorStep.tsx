@@ -411,9 +411,16 @@ export function EditorStep({
   }
 
   const handleAddFile = (file: UploadedFile) => {
-    setUploadedFiles((prev: any) =>
-      prev.find((f: any) => f.path === file.path) ? prev : [...prev, file]
-    )
+    setUploadedFiles((prev: any) => {
+      if (prev.find((f: any) => f.path === file.path)) return prev
+      return [...prev, file]
+    })
+
+    // If this is the first file and the user hasn't typed a custom job name yet
+    if (uploadedFiles.length === 0 && (!fields.jobName || fields.jobName === DEFAULTS.jobName)) {
+      const cleanName = file.name.replace(/\.[^/.]+$/, "")
+      onFieldChange({ jobName: cleanName })
+    }
   }
 
   const handleRemoveFile = (path: string) => {
