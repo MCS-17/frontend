@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, useIsMutating, useMutationState } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'motion/react'
 import {
   FolderPlus, SendHorizontal, X, ArrowLeft,
@@ -200,11 +200,14 @@ function ConversationPage() {
   const [stagedFiles, setStagedFiles] = useState<File[]>([])
   const [isDragging, setIsDragging] = useState(false)
   const [blockedError, setBlockedError] = useState<string | null>(null)
-  // Optimistically rendered messages before refetch
-  const [pendingMessages, setPendingMessages] = useState<Dialogue[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  const pendingMutations = useMutationState({
+    filters: { mutationKey: ['continueConversation', convoId], status: 'pending' },
+    select: (mutation) => mutation.state.variables as { message: string; files: File[] },
+  })
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['conversation', convoId],
@@ -212,80 +215,89 @@ function ConversationPage() {
   })
 
   const sendMutation = useMutation({
-
+    mutationKey: ['continueConversation', convoId],
     mutationFn: (payload: { message: string; files: File[] }) =>
       chatApi.continueConversation(convoId, payload.message, payload.files),
-    onMutate: (payload) => {
-      const userMsg: Dialogue = {
-        _id: `pending-${Date.now()}`,
-        conversation_id: convoId,
-        content: payload.message,
-        sent_by: 'user',
-        timestamp: new Date().toISOString(),
-        files: payload.files.map(f => ({ name: f.name, path: '' })),
-        is_safe: true,
-      }
-      setPendingMessages([userMsg])
+    onMutate: async (payload) => {
       setMessage('')
       setStagedFiles([])
       setBlockedError(null)
     },
-    onSuccess: (result: any) => {
-      if (!result.is_safe) {
-        const msg = pendingMessages[0]
-        queryClient.setQueryData(['conversation', convoId], (old: any) => ({
+    onSuccess: (result: any, variables, context) => {
+      queryClient.setQueryData(['conversation', convoId], (old: any) => {
+        if (!old) return old
+
+        const userMsg: Dialogue = result.user_dialogue ?? {
+          _id: `user-${Date.now()}`,
+          conversation_id: convoId,
+          content: variables.message,
+          sent_by: 'user',
+          timestamp: new Date().toISOString(),
+          files: variables.files.map(f => ({ name: f.name, path: '' })),
+          is_safe: result.is_safe,
+        }
+
+        const newMessages = [userMsg]
+        if (result.is_safe) {
+          newMessages.push({
+            _id: result.ai_dialogue?._id ?? `ai-${Date.now()}`,
+            conversation_id: convoId,
+            content: result.final_response,
+            sent_by: 'ai',
+            timestamp: new Date().toISOString(),
+            is_safe: true
+          })
+        }
+
+        return {
           ...old,
-          dialogues: [...(old?.dialogues ?? []), { ...msg, is_safe: false }],
-        }))
-        setPendingMessages([])
-        return
-      }
+          dialogues: [...old.dialogues, ...newMessages]
+        }
+      })
 
-      const aiMsg: Dialogue = {
-        _id: `ai-${Date.now()}`,
-        conversation_id: convoId,
-        content: result.final_response,
-        sent_by: 'ai',
-        timestamp: new Date().toISOString(),
-        is_safe: true
-      }
-
-      queryClient.setQueryData(['conversation', convoId], (old: any) => ({
-        ...old,
-        dialogues: [...(old?.dialogues ?? []), ...pendingMessages, aiMsg],
-      }))
-
-      setPendingMessages([])
+      // Silently sync with server database in background
+      queryClient.invalidateQueries({ queryKey: ['conversation', convoId], refetchType: 'none' })
     },
     onError: () => {
-      setPendingMessages([])
       setBlockedError('Something went wrong. Please try again.')
     },
   })
 
   const dialogues = data?.dialogues ?? []
-  const title = data?.conversation?.title ?? 'Conversation'
-  const allMessages = [...dialogues, ...pendingMessages]
 
-  const totalItems = allMessages.length + (sendMutation.isPending ? 1 : 0)
+  const optimisticDialogues = useMemo(() => {
+    return pendingMutations.map((vars, index) => ({
+      _id: `pending-${index}`,
+      conversation_id: convoId,
+      content: vars.message,
+      sent_by: 'user' as const,
+      timestamp: new Date().toISOString(),
+      files: vars.files?.map(f => ({ name: f.name, path: '' })),
+      is_safe: true,
+    }))
+  }, [pendingMutations, convoId])
+  const allMessages = useMemo(() => [...dialogues, ...optimisticDialogues], [dialogues, optimisticDialogues])
+  const isAiThinking = pendingMutations.length > 0
+  const totalItems = allMessages.length + (isAiThinking ? 1 : 0)
+  const title = data?.conversation?.title ?? 'Conversation'
 
   const virtualizer = useVirtualizer({
     count: totalItems,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => 100,
     overscan: 5,
+    getItemKey: useCallback((index) => {
+      if (index === allMessages.length) return 'typing-indicator'
+      return allMessages[index]?._id ?? index
+    }, [allMessages]),
   })
-
-  useEffect(() => {
-    setPendingMessages([])
-  }, [convoId])
 
   // Scroll to bottom on new messages or typing indicator
   useEffect(() => {
     if (totalItems > 0) {
       virtualizer.scrollToIndex(totalItems - 1, { behavior: 'smooth' })
     }
-  }, [totalItems])
+  }, [totalItems, isAiThinking])
 
   const canSend = message.trim().length > 0 && !sendMutation.isPending
 
@@ -323,7 +335,7 @@ function ConversationPage() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     addFiles(e.target.files)
-    // if (fileInputRef.current) fileInputRef.current.value = ''
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   return (
@@ -373,7 +385,7 @@ function ConversationPage() {
                 ) : (
                   <MessageBubble
                     dialogue={allMessages[virtualItem.index]}
-                    animate={pendingMessages.some(p => p._id === allMessages[virtualItem.index]._id)}
+                    animate={String(allMessages[virtualItem.index]._id).startsWith('pending-')}
                   />
                 )}
               </div>

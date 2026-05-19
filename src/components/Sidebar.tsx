@@ -17,7 +17,7 @@ import {
   SendHorizontal
 } from "lucide-react"
 import { Link, useLocation, useNavigate, useParams } from "@tanstack/react-router"
-import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query"
+import { useQuery, useQueryClient, useMutation, useIsMutating } from "@tanstack/react-query"
 import { logout, type AuthUser } from "../lib/auth"
 import { chatApi, type Conversation } from "../lib/chat"
 
@@ -56,6 +56,22 @@ function canAccessAdmin(user: AuthUser | null) {
   return user?.role === "admin" || user?.role === "staff"
 }
 
+// Add this helper above ConversationList
+function SidebarTypingIndicator() {
+  return (
+    <div className="flex gap-1 items-center ml-2 h-4">
+      {[0, 1, 2].map((i) => (
+        <motion.div
+          key={i}
+          className="size-1 rounded-full bg-amber-500"
+          animate={{ y: [0, -3, 0] }}
+          transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15 }}
+        />
+      ))}
+    </div>
+  )
+}
+
 function ConversationList({
   isCollapsed,
   currentConvoId,
@@ -68,6 +84,8 @@ function ConversationList({
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [hoveredId, setHoveredId] = useState<string | null>(null)
+
+  const isCreating = useIsMutating({ mutationKey: ['createConversation'] }) > 0
 
   const { data, isLoading } = useQuery({
     queryKey: ["conversations"],
@@ -147,6 +165,20 @@ function ConversationList({
         )}
 
         <AnimatePresence initial={false}>
+          {isCreating && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+            >
+              <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-amber-700 bg-amber-400/10 mb-0.5">
+                <MessageSquare className="size-[15px] shrink-0 text-amber-500" />
+                <span className="text-xs font-semibold truncate pr-2">Starting chat</span>
+                <SidebarTypingIndicator />
+              </div>
+            </motion.div>
+          )}
+
           {conversations.map((convo) => {
             const isActive = currentConvoId === convo._id
             const isHovered = hoveredId === convo._id
@@ -291,9 +323,8 @@ export function Sidebar() {
           />
         )}
         <Icon
-          className={`size-[18px] shrink-0 transition-colors ${
-            isActive ? "text-amber-500" : "text-zinc-400 group-hover:text-zinc-600"
-          }`}
+          className={`size-[18px] shrink-0 transition-colors ${isActive ? "text-amber-500" : "text-zinc-400 group-hover:text-zinc-600"
+            }`}
         />
         {!isCollapsed && (
           <motion.span

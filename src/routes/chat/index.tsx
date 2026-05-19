@@ -75,6 +75,7 @@ function ChatPage() {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const createMutation = useMutation({
+    mutationKey: ['createConversation'],
     mutationFn: () => chatApi.createConversation(message.trim(), stagedFiles),
     onSuccess: (data) => {
       if (!data.is_safe) {
