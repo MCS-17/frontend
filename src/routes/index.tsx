@@ -23,7 +23,7 @@ export const Route = createFileRoute("/")({
   component: DashboardPage,
 })
 
-type OutputTab = "output" | "error" | "script"
+type OutputTab = "output" | "error"
 
 const statusTabs = [
   { label: "All", value: "all" },
@@ -37,7 +37,6 @@ const statusTabs = [
 const outputTabs: { label: string; value: OutputTab; icon: React.ReactNode }[] = [
   { label: "Output", value: "output", icon: <FileText className="size-3.5" /> },
   { label: "Error", value: "error", icon: <AlertCircle className="size-3.5" /> },
-  { label: "Script", value: "script", icon: <Code className="size-3.5" /> },
 ]
 
 function getStatusStyle(status: string) {
@@ -139,7 +138,6 @@ function DashboardPage() {
 
   useEffect(() => {
     if (!selectedJob) return
-    if (activeOutputTab === "script") return
 
     setOutputLoading(true)
     setOutputContent("")
@@ -538,9 +536,8 @@ function DashboardPage() {
                     </div>)
                     : (
                       <pre className="font-mono text-xs text-zinc-100">
-                        {activeOutputTab === "script"
-                          ? "# TODO: sbatch script from MongoDB"
-                          : outputContent.split("\n").map((line, i) => (
+                        {
+                          outputContent.split("\n").map((line, i) => (
                             <div key={i} className="flex leading-5 hover:bg-zinc-800/50">
                               <span className="w-10 shrink-0 select-none pr-4 text-right text-zinc-600">
                                 {i + 1}
