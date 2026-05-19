@@ -505,7 +505,7 @@ function DashboardPage() {
             </div>
 
             {/* RIGHT — output panel */}
-            <div className="lg:col-span-3 flex min-w-0 flex-1 flex-col bg-zinc-950">
+            <div className="lg:col-span-3 flex min-w-0 flex-1 flex-col bg-zinc-950 overflow-y-auto">
               {/* Tab bar */}
               <div className="flex shrink-0 items-center gap-1 border-b border-zinc-800 px-4 py-3">
                 {outputTabs.map((tab) => (
@@ -525,7 +525,7 @@ function DashboardPage() {
               </div>
 
               {/* Content */}
-              <div className="min-h-0 flex-1 overflow-auto p-5">
+              <div className="min-h-0 flex-1 overflow-auto p-5 overflow-y-auto">
                 {detailLoading ? (
                   <div className="flex h-full items-center justify-center gap-2 text-sm font-semibold text-zinc-500">
                     <Loader2 className="size-4 animate-spin" />

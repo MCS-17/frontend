@@ -63,7 +63,7 @@ export const FIELD_CONFIG: FieldConfig[] = [
   },
   {
     key: "gpus",
-    label: "GPUs",
+    label: "GPUs per Node",
     hint: "default: 0",
     type: "number",
     default: "0",
