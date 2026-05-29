@@ -90,9 +90,22 @@ export async function downloadFile(url: string, name: string) {
 
 
 export const jobsApi = {
-  listJobs: (status?: JobStatusFilter, days = 7) => {
-    const params = new URLSearchParams({ days: String(days) })
+  listJobs: (
+    status?: JobStatusFilter, 
+    days = 7,
+    startDate?: string,
+    endDate?: string
+  ) => {
+    const params = new URLSearchParams({ 
+      days: String(days) 
+    })
+    
     if (status && status !== 'all') params.set('status', status)
+    
+    // Append Slurm date filtering criteria if present
+    if (startDate) params.set('start_date', startDate)
+    if (endDate) params.set('end_date', endDate)
+
     return apiRequest<Job[]>(`${BASE_API_URI}/jobs?${params}`)
   },
 

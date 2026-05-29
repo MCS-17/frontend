@@ -15,6 +15,7 @@ import {
   AlertCircle,
   Code,
   RefreshCw,
+  Calendar,
 } from "lucide-react"
 import { useMemo, useState, useCallback, useEffect } from "react"
 import { type Job, type JobStatus, type JobStatusFilter, jobsApi } from "@/lib/jobs"
@@ -44,15 +45,12 @@ function getStatusStyle(status: string) {
   if (["running", "completed"].includes(status)) {
     return "border-emerald-100 bg-emerald-50 text-emerald-700"
   }
-
   if (status === "pending") {
     return "border-amber-100 bg-amber-50 text-amber-700"
   }
-
   if (["failed", "cancelled"].includes(status)) {
     return "border-red-100 bg-red-50 text-red-700"
   }
-
   return "border-slate-100 bg-slate-50 text-slate-600"
 }
 
@@ -60,21 +58,17 @@ function getStatusDot(status: string) {
   if (["running", "completed"].includes(status)) {
     return "bg-emerald-500"
   }
-
   if (status === "pending") {
     return "bg-amber-500"
   }
-
   if (["failed", "cancelled"].includes(status)) {
     return "bg-red-500"
   }
-
   return "bg-slate-400"
 }
 
 function formatCredits(value: number | null) {
-  if (value === null)
-    return "N/A"
+  if (value === null) return "N/A"
   return new Intl.NumberFormat("en-MY").format(value)
 }
 
@@ -107,7 +101,6 @@ function getStoredUser(): AuthUser | null {
 }
 
 export function DashboardPage() {
-  const authUser = getStoredUser()
   const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
@@ -125,6 +118,15 @@ export function DashboardPage() {
   const [statusFilter, setStatusFilter] = useState("all")
   const [userFilter, setUserFilter] = useState("")
 
+  // Date Picker States (Format: YYYY-MM-DD)
+  const [startDate, setStartDate] = useState<string>("")
+  const [endDate, setEndDate] = useState<string>(() => {
+    const today = new Date()
+    const offset = today.getTimezoneOffset()
+    const localToday = new Date(today.getTime() - (offset * 60 * 1000))
+    return localToday.toISOString().split("T")[0]
+  })
+
   const uniqueUsers = useMemo(() => {
     const users = jobs.map((job) => job.user).filter(Boolean)
     return Array.from(new Set(users)).sort()
@@ -138,13 +140,9 @@ export function DashboardPage() {
   const [outputLoading, setOutputLoading] = useState(false)
   const [lastRefreshed, setLastRefreshed] = useState<string | null>(null)
 
-  // Isolated log retrieval method that tracks fresh refresh timestamps
   const fetchTerminalLogs = useCallback((jobId: string, type: OutputTab) => {
     setOutputLoading(true)
-    
-    const fetchPromise = type === "output"
-      ? jobsApi.getOutput(jobId)
-      : jobsApi.getError(jobId)
+    const fetchPromise = type === "output" ? jobsApi.getOutput(jobId) : jobsApi.getError(jobId)
 
     fetchPromise
       .then((data) => {
@@ -159,7 +157,6 @@ export function DashboardPage() {
       })
   }, [])
 
-  // Fire log retrieval when tabs shift or a job is opened
   useEffect(() => {
     if (!selectedJob) {
       setOutputContent("")
@@ -173,14 +170,19 @@ export function DashboardPage() {
     setLoading(true)
     setError(null)
     try {
-      const data = await jobsApi.listJobs(statusFilter as JobStatusFilter, 7)
+      const data = await jobsApi.listJobs(
+        statusFilter as JobStatusFilter,
+        7,
+        startDate || undefined,
+        endDate || undefined
+      )
       setJobs(data)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error")
     } finally {
       setLoading(false)
     }
-  }, [statusFilter])
+  }, [statusFilter, startDate, endDate])
 
   useEffect(() => {
     loadJobs()
@@ -190,24 +192,28 @@ export function DashboardPage() {
     return jobs
       .filter((job) => {
         const q = searchQuery.toLowerCase()
-
         const matchesSearch = job.job_name.toLowerCase().includes(q) || job.job_id.toLowerCase().includes(q)
-
-        const matchesUser = userFilter
-          ? job.user === userFilter
-          : true
-
+        const matchesUser = userFilter ? job.user === userFilter : true
         return matchesSearch && matchesUser
+      })
+      .sort((a, b) => {
+        // Handle null values by placing them at the bottom
+        if (!a.submitted) return 1
+        if (!b.submitted) return -1
+        
+        // Sort descending (Newest first)
+        // If your strings look like "2026-05-29 12:00:00", standard string comparison works perfectly
+        return b.submitted.localeCompare(a.submitted)
       })
   }, [jobs, searchQuery, userFilter])
 
   async function openJobDetail(job: Job) {
-    setSelectedJob(job)           // show modal immediately with list data
+    setSelectedJob(job)
     setActiveOutputTab("output")
     setDetailLoading(true)
     try {
       const full = await jobsApi.getJob(job.job_id)
-      setSelectedJob(full)        // upgrade with full data when ready
+      setSelectedJob(full)
     } catch {
     } finally {
       setDetailLoading(false)
@@ -227,7 +233,7 @@ export function DashboardPage() {
             My Dashboard
           </h1>
           <p className="mt-2 max-w-full text-sm leading-6 text-zinc-500">
-            View your submitted jobs, check their current status, and open each job for detailed resource information.
+            View your submitted jobs, check their current status, and filter historical runs via date pickers.
           </p>
         </div>
 
@@ -260,11 +266,10 @@ export function DashboardPage() {
               </div>
             </div>
 
-            <div className="mt-4 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-              <div className="mt-4 flex flex-wrap gap-2">
+            <div className="mt-4 flex flex-col justify-between gap-4 xl:flex-row xl:items-center">
+              <div className="flex flex-wrap gap-2">
                 {statusTabs.map((tab) => {
                   const isActive = statusFilter === tab.value
-
                   return (
                     <button
                       key={tab.value}
@@ -281,25 +286,74 @@ export function DashboardPage() {
                 })}
               </div>
 
-              {isAdmin && (
-                <div className="relative shrink-0">
-                  <User className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
-                  <select
-                    value={userFilter}
-                    onChange={(event) => setUserFilter(event.target.value)}
-                    className="h-9 w-full appearance-none rounded-xl border border-slate-200 bg-white/60 pl-9 pr-8 text-xs font-medium text-zinc-900 outline-none transition-all focus:border-amber-400 sm:w-48 cursor-pointer"
-                  >
-                    <option value="">All users</option>
-                    {uniqueUsers.map((u) => (
-                      <option key={u} value={u}>{u}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
+              {/* Advanced Interactive Date Picker Controls */}
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white/80 p-1.5 shadow-sm">
+                  <div className="flex items-center gap-1.5 px-1.5 py-1">
+                    <Calendar className="size-3.5 text-zinc-400" />
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">Timeframe:</span>
+                  </div>
+
+                  {/* Start Date Picker */}
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    onClick={(e) => e.currentTarget.showPicker()}
+                    className="rounded-lg border border-slate-100 bg-slate-50 px-2 py-1 text-xs font-semibold text-zinc-800 outline-none transition-all hover:bg-slate-100 focus:border-amber-400 focus:bg-white cursor-pointer"
+                  />
+
+                  <span className="text-zinc-400 text-xs font-medium px-0.5">to</span>
+
+                  {/* End Date Picker */}
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    onClick={(e) => e.currentTarget.showPicker()}
+                    className="rounded-lg border border-slate-100 bg-slate-50 px-2 py-1 text-xs font-semibold text-zinc-800 outline-none transition-all hover:bg-slate-100 focus:border-amber-400 focus:bg-white cursor-pointer"
+                  />
+
+                  {/* Instantly Clear Selected Dates */}
+                  {(startDate || endDate !== new Date().toISOString().split("T")[0]) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStartDate("");
+
+                        const today = new Date()
+                        const offset = today.getTimezoneOffset()
+                        const localToday = new Date(today.getTime() - (offset * 60 * 1000))
+                        setEndDate(localToday.toISOString().split("T")[0]);
+                      }}
+                      className="ml-1 flex items-center justify-center rounded-lg bg-zinc-50 p-1 text-zinc-400 transition-all hover:bg-red-50 hover:text-red-600"
+                      title="Reset calendar selectors"
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  )}
                 </div>
-              )}
+
+                {isAdmin && (
+                  <div className="relative shrink-0">
+                    <User className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
+                    <select
+                      value={userFilter}
+                      onChange={(event) => setUserFilter(event.target.value)}
+                      className="h-9 w-full appearance-none rounded-xl border border-slate-200 bg-white/60 pl-9 pr-8 text-xs font-medium text-zinc-900 outline-none transition-all focus:border-amber-400 sm:w-48 cursor-pointer"
+                    >
+                      <option value="">All users</option>
+                      {uniqueUsers.map((u) => (
+                        <option key={u} value={u}>{u}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-          
+
           <div className="min-h-0 flex-1 overflow-auto">
             <table className="w-full border-collapse">
               <thead className="sticky top-0 z-10">
@@ -390,8 +444,7 @@ export function DashboardPage() {
                           >
                             <FileText className="size-4" />
                           </button>
-
-                          {!isActiveJob(job) ? (
+                          {!isActiveJob(job) && (
                             <button
                               type="button"
                               title="Download output"
@@ -400,9 +453,8 @@ export function DashboardPage() {
                             >
                               <Download className="size-4" />
                             </button>
-                          ) : null}
-
-                          {job.status === "Completed" ? (
+                          )}
+                          {job.status === "Completed" && (
                             <button
                               type="button"
                               title="Resubmit"
@@ -411,9 +463,8 @@ export function DashboardPage() {
                             >
                               <RotateCcw className="size-4" />
                             </button>
-                          ) : null}
-
-                          {isActiveJob(job) ? (
+                          )}
+                          {isActiveJob(job) && (
                             <button
                               type="button"
                               title="Cancel"
@@ -422,7 +473,7 @@ export function DashboardPage() {
                             >
                               <X className="size-4" />
                             </button>
-                          ) : null}
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -439,7 +490,7 @@ export function DashboardPage() {
         </div>
       </div>
 
-      {/* Job detail modal — split layout */}
+      {/* Split details modal */}
       {selectedJob && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-6 backdrop-blur-sm"
@@ -449,14 +500,11 @@ export function DashboardPage() {
             className="flex flex-col lg:grid lg:grid-cols-5 h-[90vh] w-full max-w-7xl overflow-hidden rounded-3xl bg-white shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* LEFT — job details */}
+            {/* LEFT — job stats */}
             <div className="lg:col-span-2 flex shrink-0 flex-col border-b lg:border-b-0 lg:border-r border-slate-100 max-h-[40vh] lg:max-h-none overflow-y-auto lg:overflow-visible">
               <div className="flex items-start gap-3 border-b border-slate-100 px-5 py-5">
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-zinc-900 text-white">
-                  {detailLoading
-                    ? <Loader2 className="size-4 animate-spin" />
-                    : <TerminalSquare className="size-4" />
-                  }
+                  {detailLoading ? <Loader2 className="size-4 animate-spin" /> : <TerminalSquare className="size-4" />}
                 </div>
                 <div className="min-w-0 flex-1">
                   <h2 className="truncate text-sm font-bold text-zinc-900">{selectedJob.job_name}</h2>
@@ -519,7 +567,7 @@ export function DashboardPage() {
               </div>
             </div>
 
-            {/* RIGHT — output terminal panel */}
+            {/* RIGHT — logs sub-terminal */}
             <div className="lg:col-span-3 flex min-w-0 flex-1 flex-col bg-zinc-950 overflow-hidden">
               <div className="flex shrink-0 items-center justify-between border-b border-zinc-800 px-4 py-3">
                 <div className="flex items-center gap-1">
@@ -528,10 +576,7 @@ export function DashboardPage() {
                       key={tab.value}
                       type="button"
                       onClick={() => setActiveOutputTab(tab.value)}
-                      className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${activeOutputTab === tab.value
-                        ? "bg-zinc-700 text-white"
-                        : "text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"
-                        }`}
+                      className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${activeOutputTab === tab.value ? "bg-zinc-700 text-white" : "text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"}`}
                     >
                       {tab.icon}
                       {tab.label}
@@ -560,30 +605,27 @@ export function DashboardPage() {
               <div className="min-h-0 flex-1 overflow-auto p-5">
                 {detailLoading ? (
                   <div className="flex h-full items-center justify-center gap-2 text-sm font-semibold text-zinc-500">
-                    <Loader2 className="size-4 animate-spin" />
-                    Loading details…
+                    <Loader2 className="size-4 animate-spin" /> Loading details…
                   </div>
                 ) : (
-                  outputLoading && outputContent === ""
-                    ? (<div className="flex h-full items-center justify-center gap-2 text-sm text-zinc-500">
+                  outputLoading && outputContent === "" ? (
+                    <div className="flex h-full items-center justify-center gap-2 text-sm text-zinc-500">
                       <Loader2 className="size-4 animate-spin" /> Loading logs…
-                    </div>)
-                    : (
-                      <pre className="font-mono text-xs text-zinc-100">
-                        {outputContent ? (
-                          outputContent.split("\n").map((line, i) => (
-                            <div key={i} className="flex leading-5 hover:bg-zinc-800/50">
-                              <span className="w-10 shrink-0 select-none pr-4 text-right text-zinc-600">
-                                {i + 1}
-                              </span>
-                              <span className="whitespace-pre-wrap break-words">{line}</span>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="text-zinc-600 italic pl-10 py-2">No content available in stream logs.</div>
-                        )}
-                      </pre>
-                    )
+                    </div>
+                  ) : (
+                    <pre className="font-mono text-xs text-zinc-100">
+                      {outputContent ? (
+                        outputContent.split("\n").map((line, i) => (
+                          <div key={i} className="flex leading-5 hover:bg-zinc-800/50">
+                            <span className="w-10 shrink-0 select-none pr-4 text-right text-zinc-600">{i + 1}</span>
+                            <span className="whitespace-pre-wrap break-words">{line}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-zinc-600 italic pl-10 py-2">No content available in stream logs.</div>
+                      )}
+                    </pre>
+                  )
                 )}
               </div>
 
@@ -591,11 +633,7 @@ export function DashboardPage() {
                 {!isActiveJob(selectedJob) && (
                   <button type="button"
                     className="inline-flex items-center gap-2 rounded-xl border border-zinc-700 px-4 py-2 text-sm font-bold text-zinc-300 transition-all hover:bg-zinc-800 hover:text-white cursor-pointer"
-                    onClick={() =>
-                      activeOutputTab === "error"
-                        ? jobsApi.downloadError(selectedJob.job_id)
-                        : jobsApi.downloadOutput(selectedJob.job_id)
-                    }
+                    onClick={() => activeOutputTab === "error" ? jobsApi.downloadError(selectedJob.job_id) : jobsApi.downloadOutput(selectedJob.job_id)}
                   >
                     <Download className="size-4" />
                     {activeOutputTab === "error" ? "Download error" : "Download output"}
@@ -604,8 +642,7 @@ export function DashboardPage() {
                 {selectedJob.status === "Completed" && (
                   <button type="button"
                     className="inline-flex items-center gap-2 rounded-xl border border-zinc-700 px-4 py-2 text-sm font-bold text-zinc-300 transition-all hover:bg-zinc-800 hover:text-white">
-                    <RotateCcw className="size-4" />
-                    Resubmit job
+                    <RotateCcw className="size-4" /> Resubmit job
                   </button>
                 )}
               </div>
