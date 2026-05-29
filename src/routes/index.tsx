@@ -197,13 +197,17 @@ export function DashboardPage() {
         return matchesSearch && matchesUser
       })
       .sort((a, b) => {
-        // Handle null values by placing them at the bottom
+        // Handle null/missing values by placing them at the bottom
         if (!a.submitted) return 1
         if (!b.submitted) return -1
-        
+
+        // Convert "29 May, 12:44 PM" into milliseconds since 1970.
+        // We strip out the comma so the JS engine's date parser reads it cleanly.
+        const timeA = Date.parse(a.submitted.replace(',', '')) || 0
+        const timeB = Date.parse(b.submitted.replace(',', '')) || 0
+
         // Sort descending (Newest first)
-        // If your strings look like "2026-05-29 12:00:00", standard string comparison works perfectly
-        return b.submitted.localeCompare(a.submitted)
+        return timeB - timeA
       })
   }, [jobs, searchQuery, userFilter])
 
