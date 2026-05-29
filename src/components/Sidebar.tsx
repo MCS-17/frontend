@@ -14,7 +14,8 @@ import {
   ShieldCheck,
   MessageSquare,
   Trash2,
-  SendHorizontal
+  SendHorizontal,
+  Server
 } from "lucide-react"
 import { Link, useLocation, useNavigate, useParams } from "@tanstack/react-router"
 import { useQuery, useQueryClient, useMutation, useMutationState } from "@tanstack/react-query"
@@ -24,13 +25,14 @@ import { chatApi, type Conversation } from "../lib/chat"
 type NavigationTab = {
   name: string
   icon: ComponentType<{ className?: string }>
-  to: "/" | "/chat" | "/storage" | "/admin" | "/submit"
+  to: "/" | "/chat" | "/storage" | "/admin" | "/submit" | "/nodes"
 }
 
 const TOP_TABS: NavigationTab[] = [
   { name: "Chat", icon: MessageSquareMore, to: "/chat" },
   { name: "Submit", icon: SendHorizontal, to: "/submit" },
   { name: "Dashboard", icon: LayoutGrid, to: "/" },
+  { name: "Nodes", icon: Server, to: "/nodes" },
   { name: "Storage", icon: Folder, to: "/storage" },
 ]
 
@@ -174,7 +176,7 @@ function ConversationList({
       </div>
 
       {/* Scrollable list */}
-      <div className="overflow-y-auto flex-1 space-y-0.5 pr-0.5 max-h-[240px] scrollbar-thin scrollbar-thumb-zinc-200 scrollbar-track-transparent">
+      <div className="overflow-y-auto flex-1 space-y-0.5 pr-0.5 scrollbar-thin scrollbar-thumb-zinc-200 scrollbar-track-transparent">
         {isLoading && (
           <div className="space-y-1.5 py-1">
             {[1, 2, 3].map((i) => (

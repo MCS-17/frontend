@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SubmitRouteImport } from './routes/submit'
 import { Route as StorageRouteImport } from './routes/storage'
+import { Route as NodesRouteImport } from './routes/nodes'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -26,6 +27,11 @@ const SubmitRoute = SubmitRouteImport.update({
 const StorageRoute = StorageRouteImport.update({
   id: '/storage',
   path: '/storage',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NodesRoute = NodesRouteImport.update({
+  id: '/nodes',
+  path: '/nodes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -64,6 +70,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/chat': typeof ChatRouteWithChildren
   '/login': typeof LoginRoute
+  '/nodes': typeof NodesRoute
   '/storage': typeof StorageRoute
   '/submit': typeof SubmitRoute
   '/chat/$convoId': typeof ChatConvoIdRoute
@@ -73,6 +80,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/login': typeof LoginRoute
+  '/nodes': typeof NodesRoute
   '/storage': typeof StorageRoute
   '/submit': typeof SubmitRoute
   '/chat/$convoId': typeof ChatConvoIdRoute
@@ -84,6 +92,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/chat': typeof ChatRouteWithChildren
   '/login': typeof LoginRoute
+  '/nodes': typeof NodesRoute
   '/storage': typeof StorageRoute
   '/submit': typeof SubmitRoute
   '/chat/$convoId': typeof ChatConvoIdRoute
@@ -96,6 +105,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/chat'
     | '/login'
+    | '/nodes'
     | '/storage'
     | '/submit'
     | '/chat/$convoId'
@@ -105,6 +115,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/login'
+    | '/nodes'
     | '/storage'
     | '/submit'
     | '/chat/$convoId'
@@ -115,6 +126,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/chat'
     | '/login'
+    | '/nodes'
     | '/storage'
     | '/submit'
     | '/chat/$convoId'
@@ -126,6 +138,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   ChatRoute: typeof ChatRouteWithChildren
   LoginRoute: typeof LoginRoute
+  NodesRoute: typeof NodesRoute
   StorageRoute: typeof StorageRoute
   SubmitRoute: typeof SubmitRoute
 }
@@ -144,6 +157,13 @@ declare module '@tanstack/react-router' {
       path: '/storage'
       fullPath: '/storage'
       preLoaderRoute: typeof StorageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/nodes': {
+      id: '/nodes'
+      path: '/nodes'
+      fullPath: '/nodes'
+      preLoaderRoute: typeof NodesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -208,6 +228,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   ChatRoute: ChatRouteWithChildren,
   LoginRoute: LoginRoute,
+  NodesRoute: NodesRoute,
   StorageRoute: StorageRoute,
   SubmitRoute: SubmitRoute,
 }
