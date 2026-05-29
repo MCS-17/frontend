@@ -7,7 +7,6 @@ import {
   X,
   Thermometer,
   Clock,
-  CheckCircle2,
   AlertCircle,
   Zap,
   CircuitBoard,
@@ -54,14 +53,26 @@ export function NodesDashboardPage() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
 
   // 1. Fetch Summary Data for the High-Level Grid (polls every 10 seconds)
-  const { data: nodesSummary, isLoading: isSummaryLoading, isError } = useQuery({
+  const { 
+    data: nodesSummary, 
+    isLoading: isSummaryLoading, 
+    isError,
+    refetch: refetchSummary,       // <-- Extracted for global sync button
+    isFetching: isSummaryFetching  // <-- Extracted to animate global button spinner
+  } = useQuery({
     queryKey: ["nodes-summary"],
     queryFn: nodesApi.listNodesSummary,
     refetchInterval: 10000,
   })
 
   // 2. Fetch Isolated Node Hardware Specs for the Modal (polls every 5 seconds while open)
-  const { data: nodeDetail, isLoading: isDetailLoading } = useQuery({
+  const { 
+    data: nodeDetail, 
+    isLoading: isDetailLoading,
+    refetch: refetchDetail,        
+    isFetching: isDetailFetching,  
+    dataUpdatedAt: detailUpdatedAt 
+  } = useQuery({
     queryKey: ["node-details", selectedNodeId],
     queryFn: () => nodesApi.getNodeDetails(selectedNodeId!),
     enabled: !!selectedNodeId,
@@ -98,14 +109,29 @@ export function NodesDashboardPage() {
   return (
     <div className="p-6 lg:p-10 flex flex-col h-full gap-6 relative text-zinc-900">
       
-      {/* Header matched with standard layout theme */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-zinc-900">
-          Cluster Status
-        </h1>
-        <p className="mt-1 text-sm text-zinc-500">
-          Real-time telemetry and availability for cluster worker nodes. Click a card to view specific accelerator specs.
-        </p>
+      {/* Header aligned with global layout theme */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-zinc-900">
+            Cluster Status
+          </h1>
+          <p className="mt-1 text-sm text-zinc-500">
+            Real-time telemetry and availability for cluster worker nodes. Click a card to view specific accelerator specs.
+          </p>
+        </div>
+
+        {/* NEW Global Grid Refresh Action Control Button */}
+        <div className="flex shrink-0 items-center">
+          <button
+            type="button"
+            onClick={() => void refetchSummary()}
+            disabled={isSummaryFetching}
+            className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-600 transition-all hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50 cursor-pointer shadow-sm select-none"
+          >
+            <RefreshCw className={`size-3.5 text-slate-500 ${isSummaryFetching ? "animate-spin" : ""}`} />
+            <span>{isSummaryFetching ? "Syncing Grid..." : "Refresh Status"}</span>
+          </button>
+        </div>
       </div>
 
       {/* Nodes Grid using glass panels from the Storage color scheme */}
@@ -288,15 +314,35 @@ export function NodesDashboardPage() {
 
                   {/* RIGHT PANEL — Multi-Accelerator & Telemetry Details */}
                   <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-white lg:col-span-8">
-                    <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 bg-slate-50/30">
-                      <h3 className="font-bold text-slate-700">Live Telemetry</h3>
-                      <button
-                        type="button"
-                        onClick={closeModal}
-                        className="hidden rounded-xl p-2 text-slate-400 transition-all hover:bg-slate-100 hover:text-zinc-900 lg:block"
-                      >
-                        <X className="size-5" />
-                      </button>
+                    <div className="flex items-center justify-between border-b border-slate-100 px-6 py-3.5 bg-slate-50/30">
+                      <div className="flex items-center gap-3">
+                        <h3 className="font-bold text-slate-700">Live Telemetry</h3>
+                        {detailUpdatedAt && (
+                          <span className="hidden sm:inline-block rounded-md bg-slate-100 border border-slate-200 px-2 py-0.5 text-[11px] text-slate-500 font-mono">
+                            Refreshed: {new Date(detailUpdatedAt).toLocaleTimeString()}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2.5">
+                        <button
+                          type="button"
+                          onClick={() => void refetchDetail()}
+                          disabled={isDetailFetching}
+                          className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition-all hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50 cursor-pointer shadow-sm select-none"
+                        >
+                          <RefreshCw className={`size-3.5 text-slate-500 ${isDetailFetching ? "animate-spin" : ""}`} />
+                          <span>{isDetailFetching ? "Syncing..." : "Refresh"}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={closeModal}
+                          className="hidden rounded-xl p-2 text-slate-400 transition-all hover:bg-slate-100 hover:text-zinc-900 lg:block cursor-pointer"
+                        >
+                          <X className="size-5" />
+                        </button>
+                      </div>
                     </div>
 
                     <div className="flex-1 overflow-y-auto bg-slate-50/10 p-6">

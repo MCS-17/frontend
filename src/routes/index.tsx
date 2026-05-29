@@ -14,6 +14,7 @@ import {
   User,
   AlertCircle,
   Code,
+  RefreshCw,
 } from "lucide-react"
 import { useMemo, useState, useCallback, useEffect } from "react"
 import { type Job, type JobStatus, type JobStatusFilter, jobsApi } from "@/lib/jobs"
@@ -105,7 +106,7 @@ function getStoredUser(): AuthUser | null {
   }
 }
 
-function DashboardPage() {
+export function DashboardPage() {
   const authUser = getStoredUser()
   const [isAdmin, setIsAdmin] = useState(false)
 
@@ -135,22 +136,38 @@ function DashboardPage() {
 
   const [outputContent, setOutputContent] = useState<string>("")
   const [outputLoading, setOutputLoading] = useState(false)
+  const [lastRefreshed, setLastRefreshed] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (!selectedJob) return
-
+  // Isolated log retrieval method that tracks fresh refresh timestamps
+  const fetchTerminalLogs = useCallback((jobId: string, type: OutputTab) => {
     setOutputLoading(true)
-    setOutputContent("")
+    
+    const fetchPromise = type === "output"
+      ? jobsApi.getOutput(jobId)
+      : jobsApi.getError(jobId)
 
-    const fetch = activeOutputTab === "output"
-      ? jobsApi.getOutput(selectedJob.job_id)
-      : jobsApi.getError(selectedJob.job_id)
+    fetchPromise
+      .then((data) => {
+        setOutputContent(data.content)
+        setLastRefreshed(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }))
+      })
+      .catch((err) => {
+        setOutputContent(`Error loading file: ${err.message}`)
+      })
+      .finally(() => {
+        setOutputLoading(false)
+      })
+  }, [])
 
-    fetch
-      .then((data) => setOutputContent(data.content))
-      .catch((err) => setOutputContent(`Error loading file: ${err.message}`))
-      .finally(() => setOutputLoading(false))
-  }, [selectedJob?.job_id, activeOutputTab])
+  // Fire log retrieval when tabs shift or a job is opened
+  useEffect(() => {
+    if (!selectedJob) {
+      setOutputContent("")
+      setLastRefreshed(null)
+      return
+    }
+    fetchTerminalLogs(selectedJob.job_id, activeOutputTab)
+  }, [selectedJob?.job_id, activeOutputTab, fetchTerminalLogs])
 
   const loadJobs = useCallback(async () => {
     setLoading(true)
@@ -206,11 +223,9 @@ function DashboardPage() {
     <div className="box-border h-full overflow-hidden p-6 lg:p-10">
       <div className="flex h-full flex-col gap-6 overflow-hidden">
         <div className="shrink-0">
-
           <h1 className="text-3xl font-bold tracking-tight text-zinc-900 lg:text-4xl">
             My Dashboard
           </h1>
-
           <p className="mt-2 max-w-full text-sm leading-6 text-zinc-500">
             View your submitted jobs, check their current status, and open each job for detailed resource information.
           </p>
@@ -223,8 +238,8 @@ function DashboardPage() {
                 Click any job row to view its full details.
               </p>
 
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <div className="relative">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <div className="relative flex-1 sm:flex-none">
                   <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
                   <input
                     value={searchQuery}
@@ -233,6 +248,15 @@ function DashboardPage() {
                     className="h-10 w-full rounded-xl border border-slate-200 bg-white/70 pl-9 pr-3 text-sm font-medium text-zinc-900 outline-none transition-all placeholder:text-zinc-400 focus:border-amber-400 sm:w-56"
                   />
                 </div>
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={loadJobs}
+                  title="Refresh job listing"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white/70 text-zinc-500 transition-all hover:bg-white hover:text-zinc-900 disabled:opacity-50 cursor-pointer shadow-sm"
+                >
+                  <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} />
+                </button>
               </div>
             </div>
 
@@ -258,25 +282,24 @@ function DashboardPage() {
               </div>
 
               {isAdmin && (
-                  <div className="relative shrink-0">
-                    <User className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
-
-                    <select
-                      value={userFilter}
-                      onChange={(event) => setUserFilter(event.target.value)}
-                      className="h-9 w-full appearance-none rounded-xl border border-slate-200 bg-white/60 pl-9 pr-8 text-xs font-medium text-zinc-900 outline-none transition-all focus:border-amber-400 sm:w-48 cursor-pointer"
-                    >
-                      <option value="">All users</option>
-                      {uniqueUsers.map((u) => (
-                        <option key={u} value={u}>{u}</option>
-                      ))}
-                    </select>
-
-                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
-                  </div>
-                )}
+                <div className="relative shrink-0">
+                  <User className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
+                  <select
+                    value={userFilter}
+                    onChange={(event) => setUserFilter(event.target.value)}
+                    className="h-9 w-full appearance-none rounded-xl border border-slate-200 bg-white/60 pl-9 pr-8 text-xs font-medium text-zinc-900 outline-none transition-all focus:border-amber-400 sm:w-48 cursor-pointer"
+                  >
+                    <option value="">All users</option>
+                    {uniqueUsers.map((u) => (
+                      <option key={u} value={u}>{u}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
+                </div>
+              )}
             </div>
           </div>
+          
           <div className="min-h-0 flex-1 overflow-auto">
             <table className="w-full border-collapse">
               <thead className="sticky top-0 z-10">
@@ -292,7 +315,7 @@ function DashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {loading ? (
+                {loading && jobs.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="px-5 py-12 text-center">
                       <div className="flex items-center justify-center gap-2 text-sm font-semibold text-zinc-400">
@@ -312,10 +335,7 @@ function DashboardPage() {
                   </tr>
                 ) : filteredJobs.length === 0 ? (
                   <tr>
-                    <td
-                      colSpan={8}
-                      className="px-5 py-12 text-center text-sm font-semibold text-zinc-400"
-                    >
+                    <td colSpan={8} className="px-5 py-12 text-center text-sm font-semibold text-zinc-400">
                       No jobs match your filters.
                     </td>
                   </tr>
@@ -324,8 +344,7 @@ function DashboardPage() {
                     <tr
                       key={job.job_id}
                       onClick={() => openJobDetail(job)}
-                      className={`cursor-pointer border-b border-slate-100 text-sm transition-colors hover:bg-amber-50/50 ${index % 2 === 0 ? "bg-white/70" : "bg-slate-50/70"
-                        }`}
+                      className={`cursor-pointer border-b border-slate-100 text-sm transition-colors hover:bg-amber-50/50 ${index % 2 === 0 ? "bg-white/70" : "bg-slate-50/70"}`}
                     >
                       <td className="whitespace-nowrap px-5 py-3 font-bold text-zinc-800">
                         {job.job_name}
@@ -365,7 +384,7 @@ function DashboardPage() {
                             title="Preview output"
                             onClick={(event) => {
                               event.stopPropagation()
-                              // TODO: wire up output preview endpoint
+                              openJobDetail(job)
                             }}
                             className="rounded-lg p-1.5 text-zinc-400 transition-all hover:bg-slate-100 hover:text-zinc-900"
                           >
@@ -432,7 +451,6 @@ function DashboardPage() {
           >
             {/* LEFT — job details */}
             <div className="lg:col-span-2 flex shrink-0 flex-col border-b lg:border-b-0 lg:border-r border-slate-100 max-h-[40vh] lg:max-h-none overflow-y-auto lg:overflow-visible">
-              {/* Header */}
               <div className="flex items-start gap-3 border-b border-slate-100 px-5 py-5">
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-zinc-900 text-white">
                   {detailLoading
@@ -459,7 +477,6 @@ function DashboardPage() {
                 </button>
               </div>
 
-              {/* Metrics — scrollable */}
               <div className="flex-1 overflow-y-auto px-5 py-4">
                 <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-zinc-400">Resources</p>
                 <div className="grid grid-cols-2 gap-2">
@@ -502,41 +519,58 @@ function DashboardPage() {
               </div>
             </div>
 
-            {/* RIGHT — output panel */}
-            <div className="lg:col-span-3 flex min-w-0 flex-1 flex-col bg-zinc-950 overflow-auto">
-              {/* Tab bar */}
-              <div className="flex shrink-0 items-center gap-1 border-b border-zinc-800 px-4 py-3">
-                {outputTabs.map((tab) => (
+            {/* RIGHT — output terminal panel */}
+            <div className="lg:col-span-3 flex min-w-0 flex-1 flex-col bg-zinc-950 overflow-hidden">
+              <div className="flex shrink-0 items-center justify-between border-b border-zinc-800 px-4 py-3">
+                <div className="flex items-center gap-1">
+                  {outputTabs.map((tab) => (
+                    <button
+                      key={tab.value}
+                      type="button"
+                      onClick={() => setActiveOutputTab(tab.value)}
+                      className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${activeOutputTab === tab.value
+                        ? "bg-zinc-700 text-white"
+                        : "text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"
+                        }`}
+                    >
+                      {tab.icon}
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-3">
+                  {lastRefreshed && (
+                    <span className="hidden sm:inline-block text-[11px] font-mono font-medium text-zinc-500 select-none">
+                      Last synced: {lastRefreshed}
+                    </span>
+                  )}
                   <button
-                    key={tab.value}
                     type="button"
-                    onClick={() => setActiveOutputTab(tab.value)}
-                    className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${activeOutputTab === tab.value
-                      ? "bg-zinc-700 text-white"
-                      : "text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"
-                      }`}
+                    disabled={outputLoading}
+                    onClick={() => fetchTerminalLogs(selectedJob.job_id, activeOutputTab)}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 py-1.5 text-xs font-bold text-zinc-300 transition-all hover:bg-zinc-800 hover:text-white disabled:opacity-50 cursor-pointer shadow-sm select-none"
                   >
-                    {tab.icon}
-                    {tab.label}
+                    <RefreshCw className={`size-3 text-zinc-400 ${outputLoading ? "animate-spin" : ""}`} />
+                    <span>{outputLoading ? "Syncing..." : "Refresh Logs"}</span>
                   </button>
-                ))}
+                </div>
               </div>
 
-              {/* Content */}
               <div className="min-h-0 flex-1 overflow-auto p-5">
                 {detailLoading ? (
                   <div className="flex h-full items-center justify-center gap-2 text-sm font-semibold text-zinc-500">
                     <Loader2 className="size-4 animate-spin" />
-                    Loading…
+                    Loading details…
                   </div>
                 ) : (
-                  outputLoading
+                  outputLoading && outputContent === ""
                     ? (<div className="flex h-full items-center justify-center gap-2 text-sm text-zinc-500">
-                      <Loader2 className="size-4 animate-spin" /> Loading…
+                      <Loader2 className="size-4 animate-spin" /> Loading logs…
                     </div>)
                     : (
                       <pre className="font-mono text-xs text-zinc-100">
-                        {
+                        {outputContent ? (
                           outputContent.split("\n").map((line, i) => (
                             <div key={i} className="flex leading-5 hover:bg-zinc-800/50">
                               <span className="w-10 shrink-0 select-none pr-4 text-right text-zinc-600">
@@ -544,14 +578,16 @@ function DashboardPage() {
                               </span>
                               <span className="whitespace-pre-wrap break-words">{line}</span>
                             </div>
-                          )) || "No content available."
-                        }
-                      </pre>)
+                          ))
+                        ) : (
+                          <div className="text-zinc-600 italic pl-10 py-2">No content available in stream logs.</div>
+                        )}
+                      </pre>
+                    )
                 )}
               </div>
 
-              {/* Bottom actions */}
-              <div className="flex shrink-0 items-center justify-end gap-2 border-t border-zinc-800 px-4 py-3">
+              <div className="flex shrink-0 items-center justify-end gap-2 border-t border-zinc-800 px-4 py-3 bg-zinc-950">
                 {!isActiveJob(selectedJob) && (
                   <button type="button"
                     className="inline-flex items-center gap-2 rounded-xl border border-zinc-700 px-4 py-2 text-sm font-bold text-zinc-300 transition-all hover:bg-zinc-800 hover:text-white cursor-pointer"
